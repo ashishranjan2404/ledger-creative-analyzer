@@ -14,3 +14,4 @@ Pillow
 
 # Delivery pipeline (ledger-delivery/)
 huggingface_hub>=0.25
+neo4j>=5.20
