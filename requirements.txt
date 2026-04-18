@@ -11,3 +11,6 @@ byteplus-python-sdk-v2[ark]
 requests
 edge-tts
 Pillow
+
+# Delivery pipeline (ledger-delivery/)
+huggingface_hub>=0.25
