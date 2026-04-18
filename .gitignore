@@ -18,6 +18,10 @@ env/
 # Cache (ignore generated, but keep dir via .gitkeep if we want)
 creative_cache/
 
+# Generated briefs (large MP4s)
+briefs/
+assets/intro/raw.mp4
+
 # OS
 .DS_Store
 Thumbs.db
