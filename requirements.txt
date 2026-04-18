@@ -4,3 +4,10 @@ httpx>=0.27
 beautifulsoup4>=4.12
 openai>=1.30
 pydantic>=2.6
+
+# Brief generator (Seedance video + edge-tts + Pillow)
+byteplus-python-sdk-v2[ark]
+python-dotenv
+requests
+edge-tts
+Pillow

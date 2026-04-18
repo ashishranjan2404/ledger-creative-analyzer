@@ -159,6 +159,39 @@ def analyze_creative(req: AnalyzeRequest):
         raise HTTPException(500, f"Analysis failed: {e}")
 
 
+# ---------------------------------------------------------------------------
+# Brief generator — Seedance video briefs (Sissi's module)
+# ---------------------------------------------------------------------------
+
+from brief_generator import generate_brief
+
+
+class BriefRequest(BaseModel):
+    brief_id: str
+    merchant_name: str
+    insights: list[dict]
+    duration_target_sec: int = 60
+    voice: str = "confident_female"
+
+
+@app.post("/generate_brief")
+def generate_brief_endpoint(req: BriefRequest):
+    """Generate a ~60s morning brief video: intro + per-insight Seedance visuals + TTS."""
+    try:
+        result = generate_brief(
+            brief_id=req.brief_id,
+            merchant_name=req.merchant_name,
+            insights=req.insights,
+            duration_target_sec=req.duration_target_sec,
+            voice=req.voice,
+        )
+        return result
+    except FileNotFoundError as e:
+        raise HTTPException(422, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Brief generation failed: {e}")
+
+
 @app.get("/health")
 def health():
     return {"ok": True, "model": CUMULUS_MODEL, "base_url": CUMULUS_BASE_URL}
