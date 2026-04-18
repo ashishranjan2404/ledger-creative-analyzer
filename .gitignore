@@ -1,0 +1,28 @@
+# Env / secrets
+.env
+.env.local
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+.eggs/
+*.egg-info/
+
+# Cache (ignore generated, but keep dir via .gitkeep if we want)
+creative_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
