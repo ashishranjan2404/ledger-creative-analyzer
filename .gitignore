@@ -30,3 +30,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Node modules (ledger-delivery/photon-node/ uses spectrum-ts)
+node_modules/
