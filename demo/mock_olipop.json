@@ -1,0 +1,35 @@
+{
+  "creative_id": "cr-adlyze-tiktok-olipop-ugc",
+  "source_url": "https://www.tiktok.com/@drinkolipop/video/<pick-at-rehearsal>",
+  "media_type": "video",
+  "platform": "tiktok",
+  "merchant_name": "Olipop",
+  "features": {
+    "angle": "testimonial",
+    "subject": "ugc",
+    "person": "f_20s_happy",
+    "background": "lifestyle_home",
+    "hook_type": "question",
+    "offer": "discount_shown",
+    "color_dominant": "warm_yellow",
+    "format": "video_15s"
+  },
+  "hook_copy": "Wait, soda that's actually good for your gut?",
+  "description": "A 20-something woman in a sunlit kitchen cracks open a Strawberry Vanilla Olipop, reacts to the taste, and flashes a 20%-off code over the can on a retro yellow background.",
+  "discovered_tags": [
+    "gut-health",
+    "ugc-kitchen",
+    "first-sip-reaction",
+    "retro-can",
+    "discount-code-overlay",
+    "female-gen-z",
+    "strawberry-vanilla"
+  ],
+  "confidence": 0.89,
+  "insights": [
+    {"text": "UGC kitchen reactions are outperforming studio shots 2.8 times ROAS this week."},
+    {"text": "Your Strawberry Vanilla SKU is driving 61 percent of first-time buyers. Push it harder."},
+    {"text": "Kill 3 near-duplicate founder story cuts. Similarity 0.91, cannibalizing each other."},
+    {"text": "Shift 6 thousand dollars from Meta broad to TikTok Spark Ads targeting gut-health creators."}
+  ]
+}
