@@ -125,8 +125,45 @@
   </div>
 
   <script>
-    const API = "https://api.butterbase.ai/v1/app_36ybfio2fiy7/fn";
+    const APP_ID = "app_36ybfio2fiy7";
+    const API = `https://api.butterbase.ai/v1/${APP_ID}/fn`;
+    const AUTH_BASE = `https://api.butterbase.ai/auth/${APP_ID}`;
     const root = document.getElementById("root");
+
+    // --- Auth callback capture (Butterbase returns tokens in query string) ---
+    (function captureAuth() {
+      const params = new URLSearchParams(window.location.search);
+      const accessToken = params.get("access_token");
+      if (accessToken) {
+        localStorage.setItem("thedi_access_token", accessToken);
+        if (params.get("refresh_token")) localStorage.setItem("thedi_refresh_token", params.get("refresh_token"));
+        if (params.get("expires_in")) localStorage.setItem("thedi_expires_at", String(Date.now() + parseInt(params.get("expires_in")) * 1000));
+        // strip the query string, preserve hash
+        history.replaceState({}, "", window.location.pathname + window.location.hash);
+      }
+    })();
+
+    function getAuth() { return localStorage.getItem("thedi_access_token"); }
+    function clearAuth() {
+      localStorage.removeItem("thedi_access_token");
+      localStorage.removeItem("thedi_refresh_token");
+      localStorage.removeItem("thedi_expires_at");
+      localStorage.removeItem("thedi_user");
+    }
+    function startGoogleSignin() {
+      const redirectTo = `${window.location.origin}/`;
+      window.location.href = `${AUTH_BASE}/oauth/google?redirect_to=${encodeURIComponent(redirectTo)}`;
+    }
+    async function fetchMe() {
+      const tok = getAuth(); if (!tok) return null;
+      try {
+        const res = await fetch(`${AUTH_BASE}/me`, { headers: { Authorization: `Bearer ${tok}` } });
+        if (!res.ok) { clearAuth(); return null; }
+        const u = await res.json();
+        localStorage.setItem("thedi_user", JSON.stringify(u));
+        return u;
+      } catch { return null; }
+    }
 
     // Hash-based routing: /#/f/<token>, /#/chat/<token>, /#/r/<token>
     function route() {
@@ -141,22 +178,36 @@
     }
     window.addEventListener("hashchange", route);
 
-    function renderLanding() {
+    async function renderLanding() {
+      const user = getAuth() ? (JSON.parse(localStorage.getItem("thedi_user") || "null") || await fetchMe()) : null;
+      const signInBlock = user
+        ? `<div style="margin-top:30px;padding:16px;background:var(--surface);border-radius:8px;border:1px solid var(--rule);">
+             <div style="font-size:13px;color:var(--mute);">Signed in as</div>
+             <div style="font-weight:600;font-size:15px;margin-top:4px;">${escHtml(user.email || user.display_name || "user")}</div>
+             <div style="margin-top:12px;display:flex;gap:8px;">
+               <button class="btn ghost" id="signout-btn">Sign out</button>
+             </div>
+           </div>`
+        : `<div style="margin-top:30px;">
+             <button class="btn" id="google-signin">Sign in with Google</button>
+           </div>`;
       root.innerHTML = `
         <div class="hero">
           <strong>Thedi reads arxiv, HN, and X every morning.</strong>
           You get 10 ranked items at 7 AM with why-it-matters for you.
           Tell it what missed; tomorrow adjusts.
         </div>
-        <div style="margin-top: 30px;">
-          <a class="btn" href="#" onclick="alert('Google sign-in coming soon — this is a hackathon demo. Share a findings link like #/f/&lt;token&gt; to see a live digest.'); return false;">Sign in with Google</a>
-        </div>
+        ${signInBlock}
         <h2>How it works</h2>
         <div class="stage"><div class="num">1</div><div><strong>Ingest</strong> — arxiv + Hacker News + curated X list, matched against your keywords.</div></div>
         <div class="stage"><div class="num">2</div><div><strong>Select → Critique → Refine</strong> — MAKER-lite multi-agent loop ranks, critiques, and re-ranks.</div></div>
         <div class="stage"><div class="num">3</div><div><strong>Deliver</strong> — a 10-item email at your local 7 AM, with per-item angles.</div></div>
         <div class="stage"><div class="num">4</div><div><strong>Learn</strong> — you click "Tell Thedi what missed" → tomorrow's critic sees it.</div></div>
       `;
+      const gs = document.getElementById("google-signin");
+      if (gs) gs.onclick = startGoogleSignin;
+      const so = document.getElementById("signout-btn");
+      if (so) so.onclick = () => { clearAuth(); renderLanding(); };
     }
 
     function escHtml(s) {
