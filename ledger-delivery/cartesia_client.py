@@ -25,6 +25,20 @@ from typing import Optional
 import httpx
 
 CARTESIA_API_BASE = "https://api.cartesia.ai"
+
+# Auto-load CARTESIA_API_KEY from .cartesia.env (sibling of repo root) if the
+# env var isn't already set. The file may hold a plain raw key on one line OR
+# a standard KEY=VALUE line — we handle both. .cartesia.env is gitignored.
+_KEY_FILE = Path(__file__).resolve().parent.parent / ".cartesia.env"
+if _KEY_FILE.exists() and not os.environ.get("CARTESIA_API_KEY"):
+    _content = _KEY_FILE.read_text().strip()
+    if "\n" in _content:
+        _content = _content.splitlines()[0].strip()
+    if _content.startswith("CARTESIA_API_KEY="):
+        _content = _content.split("=", 1)[1].strip()
+    if _content:
+        os.environ["CARTESIA_API_KEY"] = _content
+
 DEFAULT_VOICE_ID = os.environ.get(
     "CARTESIA_VOICE_ID",
     # Cartesia preset: "Professional Woman" — calm, warm, corporate narration.

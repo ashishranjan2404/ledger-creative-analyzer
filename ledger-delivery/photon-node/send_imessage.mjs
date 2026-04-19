@@ -46,10 +46,22 @@ try {
       throw new Error(`Attachment fetch failed: ${resp.status} ${resp.statusText}`);
     }
     const buf = Buffer.from(await resp.arrayBuffer());
+    const name = attachmentUrl.split("/").pop() ?? "attachment";
+    const ext = (name.split(".").pop() ?? "").toLowerCase();
+    const extMime = {
+      mp4: "video/mp4",
+      mov: "video/quicktime",
+      mp3: "audio/mpeg",
+      wav: "audio/wav",
+      m4a: "audio/mp4",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+    }[ext];
     contents.push(
       attachment(buf, {
-        name: attachmentUrl.split("/").pop() ?? "attachment",
-        mimeType: resp.headers.get("content-type") ?? "video/mp4",
+        name,
+        mimeType: resp.headers.get("content-type") ?? extMime ?? "application/octet-stream",
       })
     );
   }

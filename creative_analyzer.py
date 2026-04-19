@@ -45,6 +45,10 @@ from butterbase_client import (  # noqa: E402
     get_job,
     update_job,
 )
+from cartesia_client import synthesize_insights  # noqa: E402
+from hf_storage import upload_video  # noqa: E402  (also handles mp3)
+from imessage_sender import send_imessage  # noqa: E402
+from ledger_client import get_insights_for_creative  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Cumulus / IonRouter config.
@@ -387,12 +391,165 @@ def generate_brief_endpoint(req: BriefRequest) -> dict:
         raise HTTPException(500, f"Brief generation failed: {exc}") from exc
 
 
+# ---------------------------------------------------------------------------
+# Brief delivery orchestration — Alex insights → Seedance + Cartesia → Photon
+# ---------------------------------------------------------------------------
+
+class BriefDeliveryRequest(BaseModel):
+    creative_id: str
+    recipient: str = "+16692426592"
+    n_insights: int = 4
+    duration_target_sec: int = 60
+    voice: str = "confident_female"
+
+
+def run_brief_delivery(job_id: str, req: BriefDeliveryRequest) -> None:
+    """Background pipeline — fetches insights from Alex, fires Seedance + Cartesia
+    in parallel, falls back to Cartesia audio if Seedance fails, delivers via Photon."""
+    briefs_dir = _HERE / "briefs"
+    briefs_dir.mkdir(parents=True, exist_ok=True)
+    brief_id = f"brief_{job_id[:8]}"
+    audio_path = briefs_dir / f"{brief_id}.mp3"
+
+    try:
+        # ── Stage 1 — fetch insights from Alex's GraphRAG chat API ─────────
+        update_job(job_id, current_step="fetching_insights_from_alex")
+        insights = get_insights_for_creative(req.creative_id, n=req.n_insights)
+        if not insights:
+            raise RuntimeError("Alex returned no insights")
+        print(f"[brief-delivery] {req.creative_id} insights:\n"
+              f"{json.dumps(insights, indent=2)}", flush=True)
+
+        update_job(
+            job_id,
+            current_step="generating_media_parallel",
+            discovered_tags=[ins.get("text", "")[:120] for ins in insights],
+        )
+
+        # ── Stage 2 — fan out Seedance (slow, may fail) + Cartesia (fast, fallback) ─
+        seedance_result: Optional[dict] = None
+        seedance_err: Optional[str] = None
+        cartesia_path: Optional[Path] = None
+        cartesia_err: Optional[str] = None
+
+        def _run_seedance() -> dict:
+            return generate_brief(
+                brief_id=brief_id,
+                merchant_name=req.creative_id,
+                insights=insights,
+                duration_target_sec=req.duration_target_sec,
+                voice=req.voice,
+            )
+
+        def _run_cartesia() -> Path:
+            return synthesize_insights(insights, audio_path)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            sd_future = pool.submit(_run_seedance)
+            ct_future = pool.submit(_run_cartesia)
+
+            for f in as_completed([sd_future, ct_future], timeout=900):
+                if f is sd_future:
+                    try:
+                        seedance_result = f.result()
+                    except Exception as exc:
+                        seedance_err = f"{type(exc).__name__}: {exc}"
+                        print(f"[brief-delivery] seedance failed: {seedance_err}", flush=True)
+                else:
+                    try:
+                        cartesia_path = f.result()
+                    except Exception as exc:
+                        cartesia_err = f"{type(exc).__name__}: {exc}"
+                        print(f"[brief-delivery] cartesia failed: {cartesia_err}", flush=True)
+
+        # ── Stage 3 — pick primary, upload, send ───────────────────────────
+        if seedance_result and Path(seedance_result["video_path"]).exists():
+            media_path = Path(seedance_result["video_path"])
+            repo_name = f"{brief_id}.mp4"
+            media_kind = "video"
+        elif cartesia_path and cartesia_path.exists():
+            media_path = cartesia_path
+            repo_name = f"{brief_id}.mp3"
+            media_kind = "audio"
+            print(f"[brief-delivery] falling back to Cartesia audio "
+                  f"(seedance_err={seedance_err})", flush=True)
+        else:
+            raise RuntimeError(
+                f"Both delivery paths failed. seedance={seedance_err}. cartesia={cartesia_err}"
+            )
+
+        update_job(
+            job_id,
+            current_step=f"uploading_{media_kind}",
+            error=(f"Seedance fallback: {seedance_err}" if media_kind == "audio" else None),
+        )
+        public_url = upload_video(media_path, name_in_repo=repo_name)
+
+        update_job(job_id, current_step="sending_imessage", video_download_url=public_url)
+
+        caption_lines = [f"Ledger brief — {req.creative_id}"]
+        for i, ins in enumerate(insights[:3], 1):
+            caption_lines.append(f"{i}. {ins.get('text', '').strip()}")
+        if media_kind == "audio":
+            caption_lines.append("")
+            caption_lines.append("(Audio brief — video pipeline unavailable.)")
+        caption = "\n".join(caption_lines)
+
+        send_result = send_imessage(
+            recipient=req.recipient,
+            text=caption,
+            attachment_url=public_url,
+        )
+        print(f"[brief-delivery] photon: {send_result}", flush=True)
+
+        complete_job(job_id, hook_copy=caption)
+
+    except Exception as exc:
+        err = f"{type(exc).__name__}: {exc}"
+        print(f"[brief-delivery] FAILED: {err}", flush=True)
+        try:
+            fail_job(job_id, error=err[:1000], current_step="error")
+        except Exception:
+            pass
+        raise
+
+
+@app.post("/trigger_brief_delivery", status_code=202)
+def trigger_brief_delivery(
+    req: BriefDeliveryRequest, background_tasks: BackgroundTasks
+) -> dict:
+    """Async trigger for the full brief-delivery chain.
+    Fetches insights from Alex's GraphRAG → Seedance + Cartesia in parallel →
+    Photon iMessage to `recipient` (default +16692426592)."""
+    job = create_job(
+        creative_id=req.creative_id,
+        platform="brief_delivery",
+        media_type="video_or_audio",
+        source_url=f"alex://{req.creative_id}",
+        status="in_progress",
+        current_step="queued",
+    )
+    background_tasks.add_task(run_brief_delivery, job["id"], req)
+    return {
+        "creative_id": req.creative_id,
+        "job_id": job["id"],
+        "recipient": req.recipient,
+        "status": "accepted",
+    }
+
+
 @app.get("/health")
 def health() -> dict:
     return {
         "ok": True,
-        "version": "0.2.0",
+        "version": "0.3.0",
         "model": CUMULUS_MODEL,
         "base_url": CUMULUS_BASE_URL,
         "voting_default_n": 5,
+        "routes": [
+            "POST /analyze_creative",
+            "GET /jobs/{id}",
+            "POST /generate_brief",
+            "POST /trigger_brief_delivery",
+        ],
     }
