@@ -128,9 +128,40 @@ Each entry: purpose, key symbols, imports, consumers.
 - **Key symbols:** `create_task`, `poll_task`, `download_video`, `postprocess`, `PROMPT_TEXT`, `MODEL_ID`.
 - **Writes:** `assets/intro/intro.mp4`, `assets/intro/prompt.txt`, `assets/intro/seedance.log`.
 
+### Brief-delivery orchestration
+
+Lives inside `creative_analyzer.py` (not its own file) because it's another FastAPI route wired into the same app. Shape:
+
+- **Route:** `POST /trigger_brief_delivery` → 202 + `job_id`.
+- **Request model:** `BriefDeliveryRequest { creative_id, recipient="+16692426592", n_insights=4, duration_target_sec=60, voice="confident_female" }`.
+- **Background function:** `run_brief_delivery(job_id, req)`.
+- **Stages (each ticks `current_step` in Butterbase):**
+  1. `fetching_insights_from_alex` — `ledger_client.get_insights_for_creative()`.
+  2. `generating_media_parallel` — ThreadPoolExecutor fans out Sissi's `generate_brief()` *and* `cartesia_client.synthesize_insights()` concurrently; Cartesia finishes in ~5s, Seedance takes 5-10 min (or fails fast with 403).
+  3. `uploading_video` | `uploading_audio` — whichever won goes to HF.
+  4. `sending_imessage` — Photon attachment + caption with 3 insight headlines.
+  5. `complete_job` (with `error` column carrying the Seedance failure message when we fell back).
+- **Fallback priority:** prefer Seedance video (richer content, has Sissi's edge-tts narration baked in). Use Cartesia MP3 only if Seedance fails or produces no file. If both fail → `fail_job` with the combined error.
+
 ### Delivery helpers (`ledger-delivery/`)
 
 Directory has a **hyphen** → not an importable package. Callers use `sys.path.insert(…/"ledger-delivery")`, then import modules directly (`from hf_storage import upload_video`).
+
+#### `ledger-delivery/ledger_client.py`
+- **Purpose:** Wraps Alex's GraphRAG chat endpoint (`45.78.200.9:7070/api/chat/stream/v5`). The endpoint is a chat-style LLM that queries the Neo4j graph and returns inference markdown.
+- **Key symbols:** `get_insights_for_creative(creative_id, n, custom_query=None)`, `get_raw_inference(query)`, `_extract_json_array`, `_parse_markdown_bullets`, `LEDGER_CHAT_URL_TEMPLATE`.
+- **Env read:** `LEDGER_CHAT_URL` (optional override; default hardcoded to hackathon IP).
+- **Parser:** tries JSON-first (whole text → JSON array, then ```json fence, then first `[...]` block), falls back to numbered/bulleted markdown scrape, finally returns whole text as a single insight.
+- **No auth** — internal-network endpoint.
+- **Consumers:** `creative_analyzer.run_brief_delivery`, `demo_full_flow.py`.
+
+#### `ledger-delivery/cartesia_client.py`
+- **Purpose:** Cartesia TTS client. Synthesizes narration MP3 for the audio-fallback delivery path. Used by `run_brief_delivery` when Seedance is unavailable.
+- **Key symbols:** `synthesize(text, out_path, voice_id, model_id)`, `synthesize_insights(insights, out_path)`, `DEFAULT_VOICE_ID`, `DEFAULT_MODEL_ID`, `CARTESIA_API_BASE`.
+- **Env read:** `CARTESIA_API_KEY` (auto-loaded from `.cartesia.env` at module import if missing from env), `CARTESIA_VOICE_ID`, `CARTESIA_MODEL_ID`.
+- **Defaults:** Sonic-2 model + "Professional Woman" preset voice (warm corporate narration).
+- **Format:** 128 kbps mono MP3 at 44.1 kHz.
+- **Fails loudly** on missing `CARTESIA_API_KEY` (no silent degradation).
 
 #### `ledger-delivery/butterbase_client.py`
 - **Purpose:** Thin REST wrapper over Butterbase auto-CRUD for the `jobs` table. Uses the platform API key → `butterbase_service` role → bypasses RLS.
@@ -181,6 +212,10 @@ Directory has a **hyphen** → not an importable package. Callers use `sys.path.
 
 #### `smoke_test.py`
 - **Purpose:** Minimum plumbing check — HF upload of `intro.mp4` + Photon iMessage. No analysis, no voting, no Neo4j.
+
+#### `demo_full_flow.py`
+- **Purpose:** Exercises `run_brief_delivery()` synchronously so stdout shows live progress. Creates a Butterbase job, calls the orchestration, reports final state. Best demo when Seedance is blocked — it falls back to Cartesia automatically and delivers an audio brief in ~10-15 seconds.
+- **Env overrides:** `DEMO_CREATIVE_ID`, `DEMO_RECIPIENT`.
 
 #### `retry_seedance.sh`
 - **Purpose:** Fires `demo_e2e.py` every 10 min × 18 attempts. Run detached so Seedance auto-recovers once a BytePlus bill is paid.
@@ -282,9 +317,11 @@ Canonical in `README.md`. 202-accept shape vs job-poll shape documented with exa
 | IonRouter / Cumulus | VLM for MAKER voting | `IONROUTER_KEY` (Bearer) | Base URL matters — `api.ionrouter.io/v1` for Qwen; `kimi.ionrouter.io/v1` only serves Kimi. `response_format:{type:"json_object"}` is undocumented. |
 | Butterbase | jobs DB + storage + realtime | `BUTTERBASE_API_KEY` (Bearer bb_sk_) | DSL uses `primaryKey` (not `primary`). Defaults are normalized at display (e.g. `'pending'` → `pending`) but apply correctly at INSERT. REST: `GET /v1/{app}/{table}?col=op.val&order=…&limit=…`. |
 | Neo4j Aura | graph for CreativeFeature edges | `NEO4J_URI` (`neo4j+s://…`) + user/pass | `NEO4J_USERNAME` (not `_USER`). |
-| Hugging Face | video hosting (public dataset) | `HF_TOKEN` from `~/.zshrc` | Dataset must be public so Photon can fetch the resolve URL unauthenticated. |
-| Photon Spectrum | iMessage delivery | `PHOTON_PROJECT_ID` + `PHOTON_API_KEY` | `PHOTON_WORKSPACE_ID` is not used by the SDK — ignore. spectrum-ts v0.4.0 is TS-only; Python shells out to Node. |
-| BytePlus Seedance | video generation | `ARK_API_KEY` (aliased from `SEED_DANCE_API_KEY`) | 403 `AccountOverdueError` on unpaid balance. Tasks may queue indefinitely before rejecting. |
+| Hugging Face | video + audio hosting (public dataset) | `HF_TOKEN` from `~/.zshrc` | Dataset must be public so Photon can fetch the resolve URL unauthenticated. Reused for both MP4 and MP3. |
+| Photon Spectrum | iMessage delivery | `PHOTON_PROJECT_ID` + `PHOTON_API_KEY` | `PHOTON_WORKSPACE_ID` is not used by the SDK — ignore. spectrum-ts v0.4.0 is TS-only; Python shells out to Node. Mime detection in the shim is URL-extension-based (so .mp3 lands as audio/mpeg, not octet-stream). |
+| BytePlus Seedance | video generation (visuals for briefs) | `ARK_API_KEY` (aliased from `SEED_DANCE_API_KEY`) | 403 `AccountOverdueError` on unpaid balance. Tasks may queue indefinitely before rejecting. `run_brief_delivery` falls back to Cartesia audio. |
+| Cartesia | TTS narration (fallback when Seedance blocked) | `CARTESIA_API_KEY` (X-API-Key header) | Key stored in `.cartesia.env` (raw single-line), gitignored, auto-loaded. Sonic-2 model + Professional Woman preset voice. |
+| Alex's GraphRAG chat | insight aggregation from Neo4j | none (internal-network IP) | Endpoint is `/api/chat/stream/v5`. Pass the question as URL-encoded `content=…`. Returns text/markdown — parser tries JSON-first. |
 | ngrok / Fly / Railway | exposing localhost:8001 to Alex | — | Butterbase doesn't host Python. |
 
 ### Butterbase MCP tools

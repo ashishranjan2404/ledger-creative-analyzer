@@ -13,9 +13,12 @@ Async trigger service that runs **MAKER-voted** VLM analysis on ad creatives (vi
 | Debug a stuck / failed job | `docs/ARCHITECTURE.md` §*Debug playbook* |
 | Trace a request end-to-end | `docs/ARCHITECTURE.md` §*Request flow* |
 | Change the VLM prompt or vote | `docs/ARCHITECTURE.md` §*MAKER voting* |
+| Wire a new insight source / question to Alex | `ledger-delivery/ledger_client.py` (custom_query param) |
+| Change narration voice / model | `ledger-delivery/cartesia_client.py::DEFAULT_VOICE_ID` |
 | Change Seedance prompt | `docs/seedance_corporate_debriefer_prompt.md` + `brief_generator.py::_build_insight_prompt()` |
 | Change Butterbase schema | `docs/butterbase_jobs_schema.json` + MCP `apply_schema` |
 | Understand the HTTP contract | `README.md` (canonical for Alex / Sissi) |
+| Trigger the full brief-delivery chain | `POST /trigger_brief_delivery` or `python3 demo_full_flow.py` |
 
 ## Don't
 
@@ -43,11 +46,14 @@ Async trigger service that runs **MAKER-voted** VLM analysis on ad creatives (vi
 | `NEO4J_URI` / `NEO4J_USERNAME` / `NEO4J_PASSWORD` / `NEO4J_DATABASE` | Aura graph |
 | `HF_TOKEN` | Read from `~/.zshrc`, not `.env` |
 | `SEED_DANCE_API_KEY` | Seedance — aliased to `ARK_API_KEY` at runtime by demo scripts |
+| `CARTESIA_API_KEY` | Cartesia TTS — stored in `.cartesia.env` (gitignored), auto-loaded by `cartesia_client.py` |
+| `LEDGER_CHAT_URL` | *Optional.* Overrides Alex's chat API URL. Default: the hackathon IP. |
 
 ## External-service status gotchas
 
-- **BytePlus Seedance** may 403 with `AccountOverdueError`. Check `retry_seedance.sh` log if briefs stop. Mock demo (`demo_mock_loop.py`) bypasses Seedance entirely.
+- **BytePlus Seedance** may 403 with `AccountOverdueError`. Check `retry_seedance.sh` log if briefs stop. `demo_full_flow.py` falls back to Cartesia audio automatically; `demo_mock_loop.py` bypasses Seedance entirely.
 - **IonRouter's `response_format={"type":"json_object"}`** is undocumented; drop it if VLM calls start failing with "unknown parameter".
+- **Alex's chat API** (`45.78.200.9:7070`) is on the hackathon network — unreachable from other networks. Override `LEDGER_CHAT_URL` if the endpoint moves post-hackathon.
 
 ## Memory files (auto-loaded)
 
