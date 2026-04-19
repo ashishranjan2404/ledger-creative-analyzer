@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thedi — your daily research scout</title>
+  <style>
+    :root {
+      --bg: #fefefe;
+      --surface: #fafaf9;
+      --ink: #1c1917;
+      --mute: #78716c;
+      --rule: #e7e5e4;
+      --accent: #f59e0b;
+      --ok: #16a34a;
+      --warn: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.55;
+    }
+    a { color: var(--ink); }
+    .wrap { max-width: 700px; margin: 0 auto; padding: 40px 24px; }
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-bottom: 20px; border-bottom: 1px solid var(--rule);
+    }
+    h1.logo {
+      margin: 0; font-size: 22px; font-weight: 600;
+    }
+    h1.logo span { color: var(--accent); font-family: serif; font-style: italic; }
+    .tag { font-size: 12px; color: var(--mute); }
+    h2 { margin-top: 30px; font-size: 18px; }
+    .hero { font-size: 18px; color: var(--mute); margin: 30px 0; }
+    .hero strong { color: var(--ink); }
+    .btn {
+      display: inline-block; padding: 10px 18px;
+      background: var(--ink); color: white;
+      text-decoration: none; border-radius: 6px; font-size: 14px;
+      border: 0; cursor: pointer;
+    }
+    .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--rule); }
+    .btn:disabled { opacity: 0.5; cursor: wait; }
+
+    .finding {
+      margin: 18px 0; padding: 16px; border-left: 3px solid var(--accent);
+      background: var(--surface); border-radius: 4px;
+    }
+    .finding .meta {
+      font-size: 11px; color: var(--mute); text-transform: uppercase;
+      letter-spacing: 0.5px; display: flex; gap: 12px;
+    }
+    .finding .title { font-size: 16px; font-weight: 600; margin: 6px 0 8px; }
+    .finding .title a { text-decoration: none; }
+    .finding .title a:hover { text-decoration: underline; }
+    .finding .angle { font-size: 14px; color: #44403c; }
+    .finding .seeds { margin-top: 10px; display: flex; gap: 12px; font-size: 12px; }
+    .finding .seeds a { color: var(--mute); text-decoration: none; }
+    .finding .seeds a:hover { text-decoration: underline; }
+
+    .rank-delta.up { color: var(--ok); font-weight: 600; }
+    .rank-delta.down { color: var(--warn); font-weight: 600; }
+    .rank-delta.new { color: var(--accent); font-weight: 600; }
+
+    .critique {
+      margin: 20px 0; padding: 18px; background: #fef3c7;
+      border: 1px solid #fde68a; border-radius: 6px;
+      font-size: 14px;
+    }
+    .critique .who { font-weight: 600; margin-bottom: 6px; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; color: #92400e; }
+
+    .stage {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; background: var(--surface); border-radius: 6px;
+      margin: 10px 0; font-size: 13px;
+    }
+    .stage .num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--ink); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600;
+    }
+
+    .chat-box {
+      display: flex; flex-direction: column; gap: 12px;
+      max-height: 50vh; overflow-y: auto; padding: 10px 0;
+    }
+    .msg {
+      padding: 12px 16px; border-radius: 14px; max-width: 80%; font-size: 14px;
+    }
+    .msg.user { background: var(--ink); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+    .msg.asst { background: var(--surface); align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid var(--rule); }
+    .chat-input {
+      display: flex; gap: 8px; margin-top: 16px;
+      padding-top: 16px; border-top: 1px solid var(--rule);
+    }
+    .chat-input textarea {
+      flex: 1; padding: 10px 12px; border: 1px solid var(--rule);
+      border-radius: 8px; font-family: inherit; font-size: 14px;
+      resize: vertical; min-height: 60px;
+    }
+
+    .error { color: var(--warn); font-size: 14px; margin: 20px 0; }
+    .loading { color: var(--mute); font-size: 14px; margin: 20px 0; }
+
+    footer {
+      margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--rule);
+      font-size: 11px; color: var(--mute); text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1 class="logo"><a href="#/" style="text-decoration:none;color:inherit;"><span>Thedi</span></a> <span style="font-family:serif;font-style:italic;color:var(--mute);font-size:14px;">·</span> <span style="font-size:14px;font-weight:400;color:var(--mute);">தேடி — seek</span></h1>
+    </header>
+
+    <main id="root"><div class="loading">Loading…</div></main>
+
+    <footer>Thedi (தேடி) — Tamil for "seek".</footer>
+  </div>
+
+  <script>
+    const API = "https://api.butterbase.ai/v1/app_36ybfio2fiy7/fn";
+    const root = document.getElementById("root");
+
+    // Hash-based routing: /#/f/<token>, /#/chat/<token>, /#/r/<token>
+    function route() {
+      const hash = (window.location.hash || "#/").replace(/^#/, "") || "/";
+      const mF = hash.match(/^\/f\/([A-Za-z0-9_-]+)/);
+      const mC = hash.match(/^\/chat\/([A-Za-z0-9_-]+)/);
+      const mR = hash.match(/^\/r\/([A-Za-z0-9_-]+)/);
+      if (mF) return renderFindings(mF[1]);
+      if (mC) return renderChat(mC[1]);
+      if (mR) return renderReplay(mR[1]);
+      return renderLanding();
+    }
+    window.addEventListener("hashchange", route);
+
+    function renderLanding() {
+      root.innerHTML = `
+        <div class="hero">
+          <strong>Thedi reads arxiv, HN, and X every morning.</strong>
+          You get 10 ranked items at 7 AM with why-it-matters for you.
+          Tell it what missed; tomorrow adjusts.
+        </div>
+        <div style="margin-top: 30px;">
+          <a class="btn" href="#" onclick="alert('Google sign-in coming soon — this is a hackathon demo. Share a findings link like #/f/&lt;token&gt; to see a live digest.'); return false;">Sign in with Google</a>
+        </div>
+        <h2>How it works</h2>
+        <div class="stage"><div class="num">1</div><div><strong>Ingest</strong> — arxiv + Hacker News + curated X list, matched against your keywords.</div></div>
+        <div class="stage"><div class="num">2</div><div><strong>Select → Critique → Refine</strong> — MAKER-lite multi-agent loop ranks, critiques, and re-ranks.</div></div>
+        <div class="stage"><div class="num">3</div><div><strong>Deliver</strong> — a 10-item email at your local 7 AM, with per-item angles.</div></div>
+        <div class="stage"><div class="num">4</div><div><strong>Learn</strong> — you click "Tell Thedi what missed" → tomorrow's critic sees it.</div></div>
+      `;
+    }
+
+    function escHtml(s) {
+      return String(s || "").replace(/[&<>\"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+    }
+
+    async function api(path, body) {
+      const res = await fetch(`${API}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      return res.json();
+    }
+
+    async function renderFindings(token) {
+      root.innerHTML = `<div class="loading">Loading digest…</div>`;
+      const data = await api("/scout-findings", { token });
+      if (data.error) return root.innerHTML = `<div class="error">${escHtml(data.error)}</div>`;
+      const { digest, findings } = data;
+      root.innerHTML = `
+        <div class="hero" style="margin-top:10px;">
+          <strong>Morning brief · ${escHtml(digest.run_date)}</strong><br>
+          <span style="font-size:14px;">${findings.length} items for ${escHtml((digest.keywords || []).join(", ")) || "you"}</span>
+        </div>
+        ${digest.critique ? `
+          <div class="critique">
+            <div class="who">Thedi's critic said</div>
+            <div>${escHtml(digest.critique)}</div>
+          </div>` : ""}
+        ${findings.map((f, i) => `
+          <div class="finding">
+            <div class="meta"><span>#${f.rank}</span><span>${escHtml(f.source)}</span><span>score ${f.score?.toFixed(1) ?? '–'}</span></div>
+            <div class="title"><a href="${escHtml(f.url)}" target="_blank" rel="noopener">${escHtml(f.title)}</a></div>
+            <div class="angle">${escHtml(f.angle)}</div>
+            <div class="seeds">
+              <a href="#/chat/${token}?seed=more_like_${f.rank}">More like this</a>
+              <a href="#/chat/${token}?seed=less_like_${f.rank}">Less like this</a>
+            </div>
+          </div>`).join("")}
+        <div style="margin-top:30px;">
+          <a class="btn" href="#/chat/${token}">Tell Thedi what missed →</a>
+          <a class="btn ghost" href="#/r/${token}" style="margin-left:12px;">See the replay</a>
+        </div>`;
+    }
+
+    async function renderReplay(token) {
+      root.innerHTML = `<div class="loading">Loading replay…</div>`;
+      const data = await api("/scout-findings", { token });
+      if (data.error) return root.innerHTML = `<div class="error">${escHtml(data.error)}</div>`;
+      const { digest, findings } = data;
+
+      const withDelta = findings.map(f => ({
+        ...f,
+        delta: f.initial_rank != null ? (f.initial_rank - f.rank) : null,
+      }));
+
+      root.innerHTML = `
+        <h2 style="margin-top:10px;">The MAKER loop — how Thedi got to this list</h2>
+        <div class="stage"><div class="num">1</div><div><strong>Selector</strong> ranked 50 raw items → initial top 10.</div></div>
+        ${digest.critique ? `
+          <div class="critique">
+            <div class="who">Step 2 — Critic reviewed the initial ranking</div>
+            <div>${escHtml(digest.critique)}</div>
+            <div style="margin-top:8px;font-size:12px;color:#92400e;">Accepted: ${digest.critic_accepted ? "✓" : "✗ → refiner re-ranked"}</div>
+          </div>` : ""}
+        <div class="stage"><div class="num">3</div><div><strong>Refiner</strong> re-ranked given the critique. Rank-diff below.</div></div>
+        <h2>Rank changes</h2>
+        ${withDelta.map(f => `
+          <div class="finding">
+            <div class="meta">
+              <span>#${f.rank}</span>
+              <span>${escHtml(f.source)}</span>
+              ${f.delta == null
+                ? `<span class="rank-delta new">NEW · pulled in by refiner</span>`
+                : f.delta > 0
+                  ? `<span class="rank-delta up">↑ ${f.delta} (was #${f.initial_rank})</span>`
+                  : f.delta < 0
+                    ? `<span class="rank-delta down">↓ ${Math.abs(f.delta)} (was #${f.initial_rank})</span>`
+                    : `<span style="color:var(--mute);">unchanged</span>`}
+            </div>
+            <div class="title"><a href="${escHtml(f.url)}" target="_blank" rel="noopener">${escHtml(f.title)}</a></div>
+            <div class="angle">${escHtml(f.angle)}</div>
+          </div>`).join("")}
+        <div style="margin-top:30px;">
+          <a class="btn ghost" href="#/f/${token}">← Back to findings</a>
+        </div>`;
+    }
+
+    async function renderChat(token) {
+      // Parse seed from hash query: #/chat/<token>?seed=more_like_2
+      const hash = window.location.hash || "";
+      const qIdx = hash.indexOf("?");
+      const seed = qIdx > 0 ? new URLSearchParams(hash.slice(qIdx + 1)).get("seed") : null;
+
+      root.innerHTML = `<div class="loading">Loading chat…</div>`;
+      const data = await api("/scout-findings", { token });
+      if (data.error) return root.innerHTML = `<div class="error">${escHtml(data.error)}</div>`;
+      const { findings } = data;
+
+      const top2 = findings.slice(0, 2);
+      let opener = "Hey — I picked these for today. Which of these missed the mark, or was there something you wanted that I skipped?";
+      if (top2.length === 2) {
+        opener = `I picked "${top2[0].title}" at #1 and "${top2[1].title}" at #2. Which of these missed, or was there something you wanted that I skipped?`;
+      }
+
+      let seedMessage = "";
+      if (seed) {
+        const m = seed.match(/^(more|less)_like_(\d+)$/);
+        if (m) {
+          const which = findings.find(f => f.rank === +m[2]);
+          if (which) seedMessage = `${m[1] === "more" ? "More" : "Less"} like "${which.title.slice(0,80)}"`;
+        }
+      }
+
+      root.innerHTML = `
+        <h2 style="margin-top:10px;">Talk to Thedi</h2>
+        <div id="chatbox" class="chat-box"></div>
+        <div class="chat-input">
+          <textarea id="msg" placeholder="Tell Thedi what missed…">${escHtml(seedMessage)}</textarea>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+          <button class="btn" id="send">Submit feedback</button>
+          <button class="btn ghost" id="preview">Preview tomorrow's re-rank</button>
+          <a class="btn ghost" href="#/f/${token}" style="margin-left:auto;">Back to findings</a>
+        </div>
+        <div id="preview-pane"></div>
+      `;
+
+      const chatbox = document.getElementById("chatbox");
+      function addMsg(role, text) {
+        const d = document.createElement("div");
+        d.className = `msg ${role}`;
+        d.innerHTML = escHtml(text);
+        chatbox.appendChild(d);
+        chatbox.scrollTop = chatbox.scrollHeight;
+      }
+      addMsg("asst", opener);
+
+      document.getElementById("send").onclick = async () => {
+        const ta = document.getElementById("msg");
+        const text = ta.value.trim();
+        if (!text) return;
+        addMsg("user", text);
+        ta.value = "";
+        const btn = document.getElementById("send");
+        btn.disabled = true; btn.textContent = "Saving…";
+        const res = await api("/scout-feedback-submit", { token, message: text });
+        btn.disabled = false; btn.textContent = "Submit feedback";
+        if (res.ok) {
+          const prefs = res.extracted_prefs || {};
+          const summary = (prefs.prefer?.length ? `prefer: ${prefs.prefer.join(", ")}` : "")
+            + (prefs.avoid?.length ? (prefs.prefer?.length ? " · " : "") + `avoid: ${prefs.avoid.join(", ")}` : "");
+          addMsg("asst", `Got it. I extracted: ${summary || "noted"}. Tomorrow's run will use this.`);
+        } else {
+          addMsg("asst", `Sorry — ${res.error || "something went wrong"}.`);
+        }
+      };
+
+      document.getElementById("preview").onclick = async () => {
+        const ta = document.getElementById("msg");
+        const text = ta.value.trim() || seedMessage;
+        if (!text) { alert("Type what you'd change first"); return; }
+        const btn = document.getElementById("preview");
+        btn.disabled = true; btn.textContent = "Re-ranking…";
+        const res = await api("/scout-feedback-preview", { token, user_message: text });
+        btn.disabled = false; btn.textContent = "Preview tomorrow's re-rank";
+        const pane = document.getElementById("preview-pane");
+        if (!res.ok) { pane.innerHTML = `<div class="error">${escHtml(res.error || "error")}</div>`; return; }
+        pane.innerHTML = `
+          <h2 style="margin-top:30px;">Tomorrow's preview</h2>
+          <div class="critique"><div class="who">Refiner said</div><div>${escHtml(res.reasoning)}</div></div>
+          ${res.preview.map(p => `
+            <div class="finding">
+              <div class="meta">
+                <span>#${p.new_rank}</span><span>${escHtml(p.source)}</span>
+                ${p.delta === 0
+                  ? `<span style="color:var(--mute);">unchanged</span>`
+                  : p.delta < 0
+                    ? `<span class="rank-delta up">↑ ${Math.abs(p.delta)} (was #${p.current_rank})</span>`
+                    : `<span class="rank-delta down">↓ ${p.delta} (was #${p.current_rank})</span>`}
+              </div>
+              <div class="title"><a href="${escHtml(p.url)}" target="_blank" rel="noopener">${escHtml(p.title)}</a></div>
+              <div class="angle">${escHtml(p.angle)}</div>
+            </div>`).join("")}
+        `;
+      };
+    }
+
+    route();
+  </script>
+</body>
+</html>
