@@ -34,3 +34,5 @@ Thumbs.db
 
 # Node modules (ledger-delivery/photon-node/ uses spectrum-ts)
 node_modules/
+.secrets/
+*.credentials
