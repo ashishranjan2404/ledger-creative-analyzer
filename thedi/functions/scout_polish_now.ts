@@ -16,6 +16,8 @@
 
 import { randomBytes } from "node:crypto";
 
+// Hosts allowed through red_flag. Exact matches for stable hosts;
+// suffix matching (see isHostAllowed) for .substack.com publications.
 const ALLOWED_HOSTS = new Set([
   "arxiv.org",
   "www.arxiv.org",
@@ -24,17 +26,53 @@ const ALLOWED_HOSTS = new Set([
   "nitter.poast.org",
   "twitter.com",
   "x.com",
+  "bsky.app",
+  "lobste.rs",
 ]);
+const ALLOWED_HOST_SUFFIXES = [".substack.com"];
+
+function isHostAllowed(hostname: string): boolean {
+  if (ALLOWED_HOSTS.has(hostname)) return true;
+  return ALLOWED_HOST_SUFFIXES.some((s) => hostname.endsWith(s));
+}
 
 const LLM_URL = "https://api.ionrouter.io/v1/chat/completions";
 const LLM_MODEL = "qwen3.5-122b-a10b";
+
+// Curated list of senior-IC / agentic-AI / SRE-adjacent Substacks.
+// Feel free to expand; each entry should expose a working /feed endpoint.
+const SUBSTACK_PUBLICATIONS: string[] = [
+  "newsletter.pragmaticengineer.com",
+  "blog.bytebytego.com",
+  "newsletter.systemdesign.one",
+  "read.highgrowthengineer.com",
+  "newsletter.engineeringleadership.com",
+  "www.aisnakeoil.com",
+  "www.oneusefulthing.org",
+  "mlops.substack.com",
+];
+
+// Small fetch-with-timeout helper so one slow source can't stall the pipeline.
+async function fetchWithTimeout(
+  url: string,
+  timeoutMs: number,
+  init?: RequestInit
+): Promise<Response> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // INGEST — arxiv + HN Algolia (X/RSS skipped for demo reliability)
 // ---------------------------------------------------------------------------
 
 type RawItem = {
-  source: "arxiv" | "hn" | "x_rss";
+  source: "arxiv" | "hn" | "x_rss" | "bsky" | "substack" | "lobsters";
   title: string;
   url: string;
   snippet?: string;
@@ -80,8 +118,181 @@ async function fetchHN(keywords: string[]): Promise<RawItem[]> {
   })).filter((i: any) => i.title && i.url);
 }
 
+// ---------------------------------------------------------------------------
+// New sources added 2026-04-20 — addresses Ramesh's "crawl X and LinkedIn"
+// feedback and the landing-page promise of non-academic coverage.
+//
+// Design intent: landing page pitches arxiv + HN + X; the first-ship scout
+// only did arxiv + HN. We now add X (via RSSHub, fragile but tried),
+// Bluesky (full public API, reliable), Substack (curated publication RSS,
+// reliable), and Lobsters (tag RSS, reliable). Failures are per-source and
+// do not fail the whole ingest (ingest() uses Promise.allSettled).
+// ---------------------------------------------------------------------------
+
+// Minimal RSS 2.0 / Atom parser — no XML library available in Deno-serverless.
+// Returns items by matching <item> or <entry> blocks via regex.
+function parseRssLike(xml: string, source: RawItem["source"]): RawItem[] {
+  const out: RawItem[] = [];
+  const itemBlocks = xml.match(/<(?:item|entry)[\s\S]*?<\/(?:item|entry)>/g) || [];
+  for (const block of itemBlocks.slice(0, 25)) {
+    const titleMatch = block.match(/<title[^>]*>([\s\S]*?)<\/title>/);
+    const linkMatch =
+      block.match(/<link[^>]*href=["']([^"']+)["']/) ||
+      block.match(/<link[^>]*>([\s\S]*?)<\/link>/);
+    const descMatch =
+      block.match(/<description[^>]*>([\s\S]*?)<\/description>/) ||
+      block.match(/<summary[^>]*>([\s\S]*?)<\/summary>/) ||
+      block.match(/<content[^>]*>([\s\S]*?)<\/content>/);
+    const dateMatch =
+      block.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/) ||
+      block.match(/<published[^>]*>([\s\S]*?)<\/published>/) ||
+      block.match(/<updated[^>]*>([\s\S]*?)<\/updated>/);
+
+    const title = stripMarkup(titleMatch?.[1] || "").slice(0, 300);
+    const url = (linkMatch?.[1] || "").trim();
+    const snippet = stripMarkup(descMatch?.[1] || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 400);
+    const published = (dateMatch?.[1] || "").trim();
+
+    if (title && url) {
+      out.push({ source, title, url, snippet, published });
+    }
+  }
+  return out;
+}
+
+function stripMarkup(s: string): string {
+  // Strip CDATA, HTML tags, and common entities.
+  return s
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function fetchX(keywords: string[]): Promise<RawItem[]> {
+  // RSSHub public instance. Fragile as of 2026 — rate-limited, occasionally down.
+  // Conservative: 2 keywords, short timeout, silent per-query failure.
+  const items: RawItem[] = [];
+  for (const kw of keywords.slice(0, 2)) {
+    try {
+      const url = `https://rsshub.app/twitter/keyword/${encodeURIComponent(kw)}?limit=10`;
+      const res = await fetchWithTimeout(url, 8000, {
+        headers: { "User-Agent": "Thedi/0.2" },
+      });
+      if (!res.ok) continue;
+      const xml = await res.text();
+      items.push(...parseRssLike(xml, "x_rss"));
+    } catch {
+      // swallowed by design — one source failure must not fail the whole run
+    }
+  }
+  // Dedup by URL and cap.
+  const seen = new Set<string>();
+  return items.filter((i) => (seen.has(i.url) ? false : (seen.add(i.url), true))).slice(0, 15);
+}
+
+async function fetchBluesky(keywords: string[]): Promise<RawItem[]> {
+  // Bluesky public search API — no auth required.
+  // Docs: https://docs.bsky.app/docs/api/app-bsky-feed-search-posts
+  const items: RawItem[] = [];
+  for (const kw of keywords.slice(0, 3)) {
+    try {
+      const url =
+        `https://public.api.bsky.app/xrpc/app.bsky.feed.searchPosts` +
+        `?q=${encodeURIComponent(kw)}&sort=latest&limit=10`;
+      const res = await fetchWithTimeout(url, 6000, {
+        headers: { "User-Agent": "Thedi/0.2" },
+      });
+      if (!res.ok) continue;
+      const data: any = await res.json();
+      for (const post of data.posts || []) {
+        const text = post?.record?.text || "";
+        if (!text || text.length < 20) continue;
+        const handle = post?.author?.handle || "unknown";
+        const rkey = (post?.uri || "").split("/").pop() || "";
+        const url = `https://bsky.app/profile/${handle}/post/${rkey}`;
+        const firstLine = text.split("\n")[0].slice(0, 280);
+        items.push({
+          source: "bsky" as any,
+          title: `@${handle}: ${firstLine}`,
+          url,
+          snippet: text.slice(0, 400),
+          published: post?.record?.createdAt,
+        });
+      }
+    } catch {
+      // ignored per contract
+    }
+  }
+  return items.slice(0, 12);
+}
+
+async function fetchSubstack(_keywords: string[]): Promise<RawItem[]> {
+  // Per-publication RSS. Curated list is senior-IC / agentic-AI / SRE-adjacent.
+  // Keyword filtering happens in the select stage — the RSS items are the pool.
+  const items: RawItem[] = [];
+  const tasks = SUBSTACK_PUBLICATIONS.map(async (host) => {
+    try {
+      const url = `https://${host}/feed`;
+      const res = await fetchWithTimeout(url, 6000, {
+        headers: { "User-Agent": "Thedi/0.2" },
+      });
+      if (!res.ok) return [];
+      const xml = await res.text();
+      // Tag parsed items with the source=substack and keep only recent-ish entries.
+      const parsed = parseRssLike(xml, "substack" as any);
+      return parsed.slice(0, 3); // cap per-publication to keep the pool balanced
+    } catch {
+      return [];
+    }
+  });
+  const results = await Promise.allSettled(tasks);
+  for (const r of results) {
+    if (r.status === "fulfilled") items.push(...r.value);
+  }
+  return items.slice(0, 24);
+}
+
+async function fetchLobsters(keywords: string[]): Promise<RawItem[]> {
+  // Lobsters: search RSS feed. Smaller community, higher signal/noise than HN.
+  const items: RawItem[] = [];
+  for (const kw of keywords.slice(0, 3)) {
+    try {
+      const url = `https://lobste.rs/search.rss?q=${encodeURIComponent(kw)}&what=stories`;
+      const res = await fetchWithTimeout(url, 5000, {
+        headers: { "User-Agent": "Thedi/0.2" },
+      });
+      if (!res.ok) continue;
+      const xml = await res.text();
+      items.push(...parseRssLike(xml, "lobsters" as any));
+    } catch {
+      // ignored
+    }
+  }
+  const seen = new Set<string>();
+  return items.filter((i) => (seen.has(i.url) ? false : (seen.add(i.url), true))).slice(0, 10);
+}
+
 async function ingest(keywords: string[]): Promise<RawItem[]> {
-  const results = await Promise.allSettled([fetchArxiv(keywords), fetchHN(keywords)]);
+  // Six sources in parallel. Each has its own timeout + swallow-on-error,
+  // so a single outage can't collapse the run.
+  const results = await Promise.allSettled([
+    fetchArxiv(keywords),
+    fetchHN(keywords),
+    fetchX(keywords),
+    fetchBluesky(keywords),
+    fetchSubstack(keywords),
+    fetchLobsters(keywords),
+  ]);
   const items: RawItem[] = [];
   for (const r of results) {
     if (r.status === "fulfilled") items.push(...r.value);
@@ -262,7 +473,7 @@ function redFlag(items: ScoredItem[]): ScoredItem[] {
   return items.filter((it) => {
     try {
       const u = new URL(it.url);
-      if (!ALLOWED_HOSTS.has(u.hostname)) return false;
+      if (!isHostAllowed(u.hostname)) return false;
     } catch {
       return false;
     }

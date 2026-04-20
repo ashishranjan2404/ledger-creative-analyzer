@@ -52,26 +52,57 @@
     }
     .finding .meta {
       font-size: 11px; color: var(--mute); text-transform: uppercase;
-      letter-spacing: 0.5px; display: flex; gap: 12px;
+      letter-spacing: 0.5px; display: flex; gap: 12px; flex-wrap: wrap;
+      align-items: center;
+    }
+    .finding .meta .score {
+      color: var(--ink); font-weight: 600;
     }
     .finding .title { font-size: 16px; font-weight: 600; margin: 6px 0 8px; }
     .finding .title a { text-decoration: none; }
     .finding .title a:hover { text-decoration: underline; }
     .finding .angle { font-size: 14px; color: #44403c; }
-    .finding .seeds { margin-top: 10px; display: flex; gap: 12px; font-size: 12px; }
-    .finding .seeds a { color: var(--mute); text-decoration: none; }
-    .finding .seeds a:hover { text-decoration: underline; }
+    /* Seed links styled as pills so they read as actionable, not prose. */
+    .finding .seeds {
+      margin-top: 12px; display: flex; gap: 8px; font-size: 12px;
+      flex-wrap: wrap;
+    }
+    .finding .seeds a {
+      color: var(--ink); text-decoration: none;
+      padding: 5px 11px; border: 1px solid var(--rule); border-radius: 999px;
+      background: #fff;
+      transition: background 120ms ease, border-color 120ms ease, transform 80ms ease;
+    }
+    .finding .seeds a:hover { background: var(--surface); border-color: var(--ink); }
+    .finding .seeds a:active { transform: translateY(1px); background: var(--rule); }
+    .finding .seeds a::before { content: "↪ "; color: var(--accent); }
 
     .rank-delta.up { color: var(--ok); font-weight: 600; }
     .rank-delta.down { color: var(--warn); font-weight: 600; }
     .rank-delta.new { color: var(--accent); font-weight: 600; }
 
+    /* Critique callout — reuses the finding card's left-border-accent pattern
+       instead of a disconnected yellow, so it sits inside the gray palette. */
     .critique {
-      margin: 20px 0; padding: 18px; background: #fef3c7;
-      border: 1px solid #fde68a; border-radius: 6px;
-      font-size: 14px;
+      margin: 20px 0; padding: 14px 16px;
+      background: var(--surface); border: 1px solid var(--rule);
+      border-left: 3px solid var(--accent); border-radius: 4px;
+      font-size: 14px; color: var(--ink);
     }
-    .critique .who { font-weight: 600; margin-bottom: 6px; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; color: #92400e; }
+    .critique .who {
+      font-weight: 600; margin-bottom: 6px; font-size: 11px;
+      letter-spacing: 0.5px; text-transform: uppercase; color: var(--accent);
+    }
+
+    /* Explicit back-nav bar above the content on sub-pages. */
+    .subnav {
+      margin: -8px 0 20px; font-size: 13px; color: var(--mute);
+    }
+    .subnav a {
+      color: var(--mute); text-decoration: none;
+      padding: 4px 0; border-bottom: 1px dashed transparent;
+    }
+    .subnav a:hover { color: var(--ink); border-bottom-color: var(--rule); }
 
     .stage {
       display: flex; align-items: center; gap: 12px;
@@ -101,7 +132,10 @@
     .chat-input textarea {
       flex: 1; padding: 10px 12px; border: 1px solid var(--rule);
       border-radius: 8px; font-family: inherit; font-size: 14px;
-      resize: vertical; min-height: 60px;
+      resize: vertical; min-height: 60px; max-height: 240px;
+    }
+    @media (max-width: 640px) {
+      .chat-input textarea { min-height: 52px; max-height: 140px; }
     }
 
     .error { color: var(--warn); font-size: 14px; margin: 20px 0; }
@@ -193,15 +227,15 @@
            </div>`;
       root.innerHTML = `
         <div class="hero">
-          <strong>Thedi reads arxiv, HN, and X every morning.</strong>
-          You get 10 ranked items at 7 AM with why-it-matters for you.
+          <strong>Thedi reads arxiv, HN, Substack, Bluesky, Lobsters, and X every morning.</strong>
+          You get 10 ranked items with why-it-matters for you, delivered to your inbox.
           Tell it what missed; tomorrow adjusts.
         </div>
         ${signInBlock}
         <h2>How it works</h2>
-        <div class="stage"><div class="num">1</div><div><strong>Ingest</strong> — arxiv + Hacker News + curated X list, matched against your keywords.</div></div>
+        <div class="stage"><div class="num">1</div><div><strong>Ingest</strong> — six sources in parallel (arxiv, Hacker News, curated Substacks, Bluesky, Lobsters, X via RSS), matched against your keywords.</div></div>
         <div class="stage"><div class="num">2</div><div><strong>Select → Critique → Refine</strong> — MAKER-lite multi-agent loop ranks, critiques, and re-ranks.</div></div>
-        <div class="stage"><div class="num">3</div><div><strong>Deliver</strong> — a 10-item email at your local 7 AM, with per-item angles.</div></div>
+        <div class="stage"><div class="num">3</div><div><strong>Deliver</strong> — a 10-item email with per-item angles. Cadence: daily at your local delivery hour once the dispatcher is live; on-demand in the meantime.</div></div>
         <div class="stage"><div class="num">4</div><div><strong>Learn</strong> — you click "Tell Thedi what missed" → tomorrow's critic sees it.</div></div>
       `;
       const gs = document.getElementById("google-signin");

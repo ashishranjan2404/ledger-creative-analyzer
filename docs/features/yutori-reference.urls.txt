@@ -1,0 +1,8 @@
+# URLs the RALF loop should pre-fetch once per run as live web context.
+# One URL per line; lines starting with # are ignored.
+
+https://yutori.com/
+https://yutori.com/scouts
+https://blog.yutori.com/p/scouts
+https://blog.yutori.com/
+https://fortune.com/2025/06/10/exclusive-ex-meta-ai-leaders-agent-web-yutori/
