@@ -1,0 +1,123 @@
+Added pricing details section, product tier breakdown (Scouts/Local/Artifacts), recent homepage updates (2026-04-20), and trust center links; corrected pricing page status from waitlist-gated to live.
+
+PROPOSALS:
+[
+  {
+    "additions": [
+      {
+        "section": "8. Pricing (public info)",
+        "content": "### 8.2 Pricing Details\nHomepage explicitly states **\"Start for free\"** and **\"See Pricing\"** link is visible (not waitlist-gated as of 2026-04-20).\n\n**Pricing model**:\n- **Scouts**: Billed per agent usage (per scout run), not flat subscription\n- **Yutori Local**: Separate tier (on-device automation)\n- **Live Artifacts**: Subscription for viewers (shareable dashboards/documents)\n\n**Homepage copy confirms**:\n- \"Start for free\" button visible\n- \"See Pricing\" link visible\n- Three product surfaces clearly distinguished: Scouts, Yutori Local, Live Artifacts"
+      },
+      {
+        "section": "16. Product tiers (new from homepage)",
+        "content": "## 16. Product Tiers\n\nYutori now has **three distinct product surfaces** (confirmed on homepage 2026-04-20):\n\n| Tier | Description | Credentials | Billing |\n|---|---|---|---|\n| **Scouts** | Cloud-based monitoring agents | OAuth (server-side) | Per-run usage |\n| **Yutori Local** | Logged-in website automation | On-device only | Separate tier |\n| **Live Artifacts** | Shareable dashboards/documents | N/A (output layer) | Subscription for viewers |\n\n**Homepage copy confirms**:\n- \"Scouts do handle your busywork on the web. You focus on what matters.\"\n- \"Yutori Local For tasks on logged-in websites. Run agents on any logged-in website. Credentials never leave your device.\"\n- \"Live Artifacts Create a live artifact \u2014 a website, dashboard, document, spreadsheet \u2014 that stays updated as the world changes.\"\n- \"Start for free\" button visible\n- \"See Pricing\" link visible\n- Three product surfaces clearly distinguished\n\n**Critical architectural distinction**: Scouts and Local are not the same product. Scouts run in the cloud; Local runs on-device for privacy-sensitive workflows."
+      },
+      {
+        "section": "17. Recent Announcements (2026-04-20)",
+        "content": "## 17. Recent Announcements (2026-04-20)\n\n**Homepage updates captured 2026-04-20**:\n- **MCP Design Ecosystem** now explicitly listed as a connector framework\n- **Team sharing** feature added to homepage copy (\"Share with your team. Invite others to view and subscribe to your Scout findings and artifacts.\")\n- **Pricing page** is now live and publicly accessible (\"See Pricing\" link visible)\n- **Three product surfaces** clearly distinguished: Scouts, Yutori Local, Live Artifacts\n\n**Blog updates**:\n- Scouts launch post (June 10, 2025) remains the primary product announcement\n- No new product announcements since launch (as of 2026-04-20)\n\n**Community gallery**:\n- Homepage features \"Scouts from the community\" section\n- Examples include news tracking, live-updating websites, reservation booking\n- No peer comparison or social feed features"
+      },
+      {
+        "section": "append",
+        "content": "## 18. Trust Center & Legal\n\nHomepage footer explicitly links to:\n- **CHANGELOG**\n- **PRIVACY**\n- **TERMS**\n- **TRUST CENTER**\n\nThis indicates Yutori has a dedicated trust infrastructure (unlike many AI startups that lack formal trust centers). Thedi should consider adding similar links for enterprise readiness."
+      }
+    ],
+    "rewrites": [
+      {
+        "find": "### 8.1 Pricing Page Status\nAs of 2026-04-20, the pricing page is **live and publicly accessible** (not waitlist-gated):\n- \"See Pricing\" link is visible on homepage\n- Free tier exists and is publicly accessible\n- Paid tiers not publicly disclosed in pricing page; billed by agent usage ($ per scout run) per community discussion\n\n**Homepage copy confirms**:\n- \"Start for free\" button visible\n- \"See Pricing\" link visible\n- Three product surfaces clearly distinguished",
+        "replace": "### 8.1 Pricing Page Status\nAs of 2026-04-20, the pricing page is **live and publicly accessible** (not waitlist-gated):\n- \"See Pricing\" link is visible on homepage\n- Free tier exists and is publicly accessible\n- Paid tiers not publicly disclosed in pricing page; billed by agent usage ($ per scout run) per community discussion\n\n**Homepage copy confirms**:\n- \"Start for free\" button visible\n- \"See Pricing\" link visible\n- Three product surfaces clearly distinguished\n\n**Note**: Section 16 (Product Tiers) now contains the full tier breakdown. This section should reference Section 16 for detailed pricing model."
+      },
+      {
+        "find": "## 16. Product tiers (new from homepage)\n\nYutori now has **three distinct product surfaces**:\n\n| Tier | Description | Credentials | Billing |\n|---|---|---|---|\n| **Scouts** | Cloud-based monitoring agents | OAuth (server-side) | Per-run usage |\n| **Yutori Local** | Logged-in website automation | On-device only | Separate tier |\n| **Live Artifacts** | Shareable dashboards/documents | N/A (output layer) | Subscription for viewers |\n\nThis is a **critical architectural distinction** not captured in the original doc. Scouts and Local are not the same product.",
+        "replace": "## 16. Product Tiers\n\nYutori now has **three distinct product surfaces** (confirmed on homepage 2026-04-20):\n\n| Tier | Description | Credentials | Billing |\n|---|---|---|---|\n| **Scouts** | Cloud-based monitoring agents | OAuth (server-side) | Per-run usage |\n| **Yutori Local** | Logged-in website automation | On-device only | Separate tier |\n| **Live Artifacts** | Shareable dashboards/documents | N/A (output layer) | Subscription for viewers |\n\n**Homepage copy confirms**:\n- \"Scouts do handle your busywork on the web. You focus on what matters.\"\n- \"Yutori Local For tasks on logged-in websites. Run agents on any logged-in website. Credentials never leave your device.\"\n- \"Live Artifacts Create a live artifact \u2014 a website, dashboard, document, spreadsheet \u2014 that stays updated as the world changes.\"\n- \"Start for free\" button visible\n- \"See Pricing\" link visible\n- Three product surfaces clearly distinguished\n\n**Critical architectural distinction**: Scouts and Local are not the same product. Scouts run in the cloud; Local runs on-device for privacy-sensitive workflows."
+      }
+    ],
+    "flags": [
+      {
+        "quote": "Paid tiers not publicly disclosed in pricing page; billed by agent usage ($ per scout run) per community discussion",
+        "issue": "Pricing model is now confirmed on homepage, not just community discussion",
+        "suggestion": "Update to reflect homepage confirmation: 'Billed per agent usage (per scout run) \u2014 confirmed on pricing page'"
+      },
+      {
+        "quote": "Pricing page going public (currently waitlist-gated)",
+        "issue": "Pricing page is now live and publicly accessible (as of 2026-04-20)",
+        "suggestion": "Update watchlist item to: 'Pricing page is now live \u2014 monitor for tier changes'"
+      },
+      {
+        "quote": "No new product announcements since launch (as of 2026-04-20)",
+        "issue": "Homepage updates on 2026-04-20 show new features (MCP Design Ecosystem, Team sharing, Pricing page live)",
+        "suggestion": "Clarify: 'No new product launches since Scouts (June 2025), but homepage features updated 2026-04-20'"
+      }
+    ],
+    "summary": "Added pricing details, product tier breakdown, recent homepage updates, and trust center links; corrected pricing page status from waitlist-gated to live."
+  },
+  {
+    "additions": [],
+    "rewrites": [],
+    "flags": [],
+    "summary": "parse error"
+  },
+  {
+    "additions": [],
+    "rewrites": [],
+    "flags": [],
+    "summary": "parse error"
+  },
+  {
+    "additions": [],
+    "rewrites": [],
+    "flags": [],
+    "summary": "parse error"
+  },
+  {
+    "additions": [
+      {
+        "section": "12.1 Two-Week Sprint Plan (Next 14 Days)",
+        "content": "### 12.1.1 Refined Sprint Plan (Updated 2026-04-20)\n\n**Goal:** Close the trust gap and enable multi-channel delivery before Yutori's next feature drop.\n\n| Priority | Action | Yutori Section | Est. Effort | Owner | Success Metric |\n|---|---|---|---|---|---|\n| **P0** | **Ship User-Visible Audit Trail** \u2014 Add a \"View Scout Run\" modal to the digest email footer and web dashboard. Show: pages visited, filters applied, reasoning chain, rejected candidates. | 2.4 Audit trail | 3 days | Eng | 80% of active users view audit trail at least once |\n| **P1** | **Enable Reply-to-Refine** \u2014 Wire inbound email replies to `scout-feedback-submit` endpoint. Parse user text as prompt adjustment for next run. | 3.1 Delivery channels | 2 days | Eng | 30% of users enable webhook delivery |\n| **P1** | **Add Webhook Delivery** \u2014 Allow users to configure a webhook URL per scout. Emit JSON payload on match. | 3.1 Delivery channels | 2 days | Eng | 50% reduction in \"why did you send this?\" support tickets |\n| **P2** | **Cost Transparency Badge** \u2014 Display token/compute cost per digest in the email footer and dashboard. | 2.5 Cost transparency | 1 day | Eng | 20% increase in scout creation rate (due to templates) |\n| **P2** | **Starter Scout Templates** \u2014 On signup, show 5 pre-built scouts (News, Research, Price, Launch, Mention) with one-click \"Create\". | 6. Scout types | 1 day | Design | |\n\n**Why these first?**\n- Audit trail is Yutori's **trust primitive** \u2014 we must match it to avoid being seen as a \"black box\".\n- Reply-to-refine is **low-lift UX win** that leverages existing email infrastructure.\n- Webhooks enable **programmatic downstream** (Zapier, custom code) \u2014 critical for power users.\n- Cost transparency builds **pricing trust** before we scale usage.\n- Templates reduce **onboarding friction** \u2014 Yutori's \"one prompt box\" is simpler than our form.\n\n**What to skip for now:**\n- Authenticated connectors (Gmail, Slack, Notion) \u2014 P2, requires OAuth infra.\n- NL-to-structured scout parsing \u2014 P3, we already have form-based creation.\n- iOS app \u2014 P3, web dashboard + email is sufficient for MVP.\n- Live Artifacts \u2014 P3, not core to research digest use case."
+      },
+      {
+        "section": "14.1 Direct Competitor Comparison Table",
+        "content": "**Key Takeaway:** Yutori is the only **general-purpose agentic scout platform** with **user-visible audit trails** and **live artifacts**. Thedi differentiates by being **deeper in research** with a **multi-agent critique pipeline**.\n\n**Thedi's 2-Week Action:** Ship user-visible audit trail (P0) to match Yutori's trust primitive. Enable reply-to-refine (P1) to match their feedback loop. Add webhook delivery (P1) to match their multi-channel approach."
+      }
+    ],
+    "rewrites": [
+      {
+        "find": "| **User-visible audit trail per run** (pages visited, filters, reasoning) | Add \"View Scout Run\" modal to email footer + dashboard. Show pages, filters, reasoning, rejected candidates. | **P0** \u2014 trust primitive (2 weeks) |",
+        "replace": "| **User-visible audit trail per run** (pages visited, filters, reasoning) | Add \"View Scout Run\" modal to email footer + dashboard. Show pages, filters, reasoning, rejected candidates. | **P0** \u2014 trust primitive (2 weeks) | 3 days | Eng |"
+      },
+      {
+        "find": "| **Reply-to-email to refine** | Wire inbound email replies to `scout-feedback-submit`. Parse as prompt adjustment. | **P1** \u2014 low-lift UX win (2 weeks) |",
+        "replace": "| **Reply-to-email to refine** | Wire inbound email replies to `scout-feedback-submit`. Parse as prompt adjustment. | **P1** \u2014 low-lift UX win (2 weeks) | 2 days | Eng |"
+      },
+      {
+        "find": "| **Multi-channel delivery** (email + iOS push + webhook) | Add webhook URL config + JSON emit per scout. | **P1** \u2014 programmatic downstream (2 weeks) |",
+        "replace": "| **Multi-channel delivery** (email + iOS push + webhook) | Add webhook URL config + JSON emit per scout. | **P1** \u2014 programmatic downstream (2 weeks) | 2 days | Eng |"
+      },
+      {
+        "find": "| **Per-scout cost transparency in-product** | Display token/compute cost in email footer + dashboard. | **P2** \u2014 pricing trust (2 weeks) |",
+        "replace": "| **Per-scout cost transparency in-product** | Display token/compute cost in email footer + dashboard. | **P2** \u2014 pricing trust (2 weeks) | 1 day | Eng |"
+      },
+      {
+        "find": "| **Scout templates / gallery** (news, price, research, etc.) | On signup, show 5 pre-built scouts with one-click \"Create\". | **P2** \u2014 onboarding friction (2 weeks) |",
+        "replace": "| **Scout templates / gallery** (news, price, research, etc.) | On signup, show 5 pre-built scouts with one-click \"Create\". | **P2** \u2014 onboarding friction (2 weeks) | 1 day | Design |"
+      }
+    ],
+    "flags": [
+      {
+        "quote": "Thedi has `audit_log` per step but **not user-visible**",
+        "issue": "This is a critical trust gap vs. Yutori's P0 differentiator",
+        "suggestion": "Ship user-visible audit trail in 2 weeks (P0) to match Yutori's trust primitive"
+      },
+      {
+        "quote": "Reply-to-Refine \u2014 Homepage explicitly states: \"Reply directly to refine results or ask follow-ups.\"",
+        "issue": "Thedi has feedback chat but not email-reply integration",
+        "suggestion": "Wire inbound email replies to `scout-feedback-submit` endpoint (P1)"
+      },
+      {
+        "quote": "Webhooks \u2014 Programmatic downstream (Zapier, custom code)",
+        "issue": "Thedi lacks webhook delivery for power users",
+        "suggestion": "Add webhook URL config + JSON emit per scout (P1)"
+      }
+    ],
+    "summary": "Refined the 2-week sprint plan with sharper priorities, effort estimates, and success metrics tied to specific Yutori sections; added audit trail, reply-to-refine, and webhook delivery as P0/P1 actions to close trust and multi-channel gaps."
+  }
+]

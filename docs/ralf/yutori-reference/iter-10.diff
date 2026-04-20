@@ -1,0 +1,95 @@
+--- iter-09
++++ iter-10
+@@ -46,6 +46,8 @@
+ - Event-driven: "run when my Linear ticket moves to Done"
+ 
+ ### 2.4 Audit trail (explainability)
++
++> **Trust Primitive Callout:** Yutori's user-visible audit trail is a key differentiator. Thedi currently has `audit_log` per step but **not user-visible**. This is a P0 action item to match Yutori's trust primitive in the Two-Week Sprint Plan (Section 12.1).
+ Every scout run exposes:
+ - Pages visited with timestamps
+ - Filters applied
+@@ -366,9 +368,11 @@
+ 
+ ## 14. Competitive cross-reference
+ 
+-See [`docs/features/research-scout-landscape.md`](./research-scout-landscape.md) for the broader competitive set (Elicit, Research Rabbit, Feedly Leo, Emergent Mind, etc.).
+-
+-**TL;DR of where Yutori sits in that landscape**: It's the **only general-purpose agentic scout platform** (vs. academic-only Elicit, graph-only Research Rabbit, arxiv-only Emergent Mind). Thedi differentiates by being **deeper in one vertical** (research digest) with a **critique pipeline**, not a general monitoring platform.
++See [`docs/features/research-scout-landscape.md`](./research-scout-landscape.md) for the broader competitive set (Elicit, Research Rabbit, Feedly Leo, Emergent Mind, Perplexity Pro, etc.).
++
++**TL;DR of where Yutori sits in that landscape**: It's the **only general-purpose agentic scout platform** (vs. academic-only Elicit, graph-only Research Rabbit, arxiv-only Emergent Mind, RSS-only Feedly Leo, search-only Perplexity Pro). Thedi differentiates by being **deeper in research** with a **multi-agent critique pipeline** (selector → critic → refiner → red-flag), **cross-source fusion** (arxiv + HN + X merged into one ranked list), and **opinionated daily-digest format** (10 items, ranked, with per-item angle).
++
++**See Section 14.1 for a detailed feature comparison table.**
+ 
+ ---
+ 
+@@ -379,8 +383,14 @@
+ - Any move into research-digest territory (direct overlap risk)
+ - Changes to audit trail UX (we should match whatever quality bar they set)
+ - Team scaling → faster feature velocity
++- **New competitor launches** (Perplexity Pro, Feedly Leo, Elicit feature updates)
+ 
+ Check quarterly: https://blog.yutori.com, X @yutoriai, the founders' personal accounts.
++
++**Also track:**
++- Perplexity Pro: https://www.perplexity.ai
++- Feedly Leo: https://feedly.com/leo
++- Elicit: https://elicit.org
+ 
+ ---
+ 
+@@ -445,3 +455,53 @@
+ - "Start for free" button visible
+ - "See Pricing" link visible
+ - Three product surfaces clearly distinguished
++
++### 14.1 Direct Competitor Comparison Table
++
++| Feature | Yutori | Thedi | Feedly Leo | Elicit | Perplexity Pro |
++|---|---|---|---|---|---|
++| **Primary Use Case** | General web monitoring (news, deals, research) | Research-focused daily digest | RSS/news aggregation with AI | Academic paper discovery | General search + research |
++| **Agent Architecture** | Single-agent per scout | Multi-agent loop (selector → critic → refiner) | Single-agent summarizer | Single-agent paper finder | Single-agent search |
++| **Audit Trail** | User-visible (pages visited, reasoning) | Thedi has `audit_log` but not user-visible | No audit trail | No audit trail | No audit trail |
++| **Reply-to-Refine** | Yes (email + web) | Yes (feedback chat) | No | No | No |
++| **Live Artifacts** | Yes (shareable dashboards) | No | No | No | No |
++| **Yutori Local** | Yes (on-device automation) | No | No | No | No |
++| **MCP Connectors** | Yes (Gmail, Slack, Notion, etc.) | No (P2 roadmap) | No | No | No |
++| **Team Sharing** | Yes (view/subscribe only) | No | Yes (workspaces) | No | No |
++| **Pricing Model** | Per-run usage | Flat subscription | Flat subscription | Flat subscription | Flat subscription |
++| **Multilingual** | English-first | English-first | Multi-language | English-first | Multi-language |
++
++**Key Takeaway:** Yutori is the only **general-purpose agentic scout platform** with **user-visible audit trails** and **live artifacts**. Thedi differentiates by being **deeper in research** with a **multi-agent critique pipeline**.
++
++### 14.2 Missing Competitor: Perplexity Pro
++
++**Perplexity Pro** is a direct competitor in the **research assistant** space that Thedi should track:
++- **Feature overlap:** Both offer AI-powered research with source citations
++- **Differentiation:** Perplexity is **search-first** (user-initiated queries), Thedi is **monitor-first** (always-on scouts)
++- **Thedi advantage:** Perplexity has **no always-on monitoring** — users must manually query each time
++- **Thedi advantage:** Perplexity has **no multi-agent critique loop** — single-pass search results
++- **Thedi advantage:** Perplexity has **no reply-to-refine** — users must re-query for adjustments
++
++**Action:** Add Perplexity Pro to the watchlist in Section 15.
++
++### 14.3 Missing Competitor: Feedly Leo
++
++**Feedly Leo** is a direct competitor in the **RSS/news monitoring** space:
++- **Feature overlap:** Both offer AI-powered news monitoring with digest delivery
++- **Differentiation:** Feedly Leo is **RSS-first** (requires feed sources), Yutori/Thedi are **web-first** (open web search)
++- **Thedi advantage:** Feedly Leo has **no browser automation** — can't access logged-in sites or dynamic content
++- **Thedi advantage:** Feedly Leo has **no audit trail** — users can't verify what Leo saw
++- **Thedi advantage:** Feedly Leo has **no live artifacts** — only email digests
++
++**Action:** Add Feedly Leo to the watchlist in Section 15.
++
++### 14.4 Missing Competitor: Elicit
++
++**Elicit** is a direct competitor in the **academic research** space:
++- **Feature overlap:** Both offer AI-powered paper discovery and summarization
++- **Differentiation:** Elicit is **paper-first** (arxiv, semantic scholar), Thedi is **multi-source** (arxiv + HN + X + news)
++- **Thedi advantage:** Elicit has **no always-on monitoring** — users must manually query each time
++- **Thedi advantage:** Elicit has **no multi-agent critique loop** — single-pass paper finder
++- **Thedi advantage:** Elicit has **no reply-to-refine** — users must re-query for adjustments
++
++**Action:** Add Elicit to the watchlist in Section 15.

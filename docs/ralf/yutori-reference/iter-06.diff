@@ -1,0 +1,74 @@
+--- iter-05
++++ iter-06
+@@ -239,8 +239,9 @@
+ 
+ ### 10.1 Team Collaboration Limitations
+ Per homepage and Fortune coverage:
+-- **Team sharing exists but is limited** — you can invite others to view and subscribe to Scout findings and artifacts, but there's no mention of multi-user editing or role-based access
++- **Team sharing exists but is limited** — you can invite others to view and subscribe to Scout findings and artifacts, but there's no mention of multi-user editing or role-based access (vs. Feedly Leo's team workspaces)
+ - **No peer comparison** — scouts don't compare to peers' scouts (community gallery exists, but no social feed or benchmarking)
++- **No multi-agent collaboration** — two scouts on similar topics don't cross-reference (vs. Thedi's MAKER-lite multi-agent loop)
+ 
+ **Homepage copy confirms**:
+ - "Share with your team. Invite others to view and subscribe to your Scout findings and artifacts."
+@@ -278,6 +279,60 @@
+ 
+ ## 11. Direct quotes (for positioning)
+ 
++### 14. Competitive cross-reference
++
++See [`docs/features/research-scout-landscape.md`](./research-scout-landscape.md) for the broader competitive set (Elicit, Research Rabbit, Feedly Leo, Emergent Mind, Perplexity, Arc Search, etc.).
++
++**TL;DR of where Yutori sits in that landscape**: It's the **only general-purpose agentic scout platform** with browser automation and live artifacts (vs. academic-only Elicit, graph-only Research Rabbit, arxiv-only Emergent Mind, RSS-only Feedly Leo, mobile-only Arc Search). Thedi differentiates by being **deeper in one vertical** (research digest) with a **critique pipeline**, not a general monitoring platform.
++
++**Direct Competitor Comparison:** See Section 14.1 for a detailed feature comparison table across Yutori, Thedi, and key competitors (Elicit, Feedly Leo, Arc Search, Perplexity).
++
++### 14.1 Direct Competitor Comparison Table
++
++| Feature | Yutori | Thedi | Competitor A (Elicit) | Competitor B (Feedly Leo) | Competitor C (Arc Search) |
++|---|---|---|---|---|---|
++| **Primary Use Case** | General web monitoring (news, deals, research) | Research digest (academic + tech) | Academic literature review | RSS feed curation + AI summaries | Mobile-first web browsing |
++| **Agent Architecture** | Single-agent per scout | Multi-agent loop (selector → critic → refiner) | Single-agent RAG | Single-agent summarization | Single-agent search |
++| **Audit Trail** | User-visible (pages visited, reasoning) | Thedi has `audit_log` but not user-visible | No audit trail | No audit trail | No audit trail |
++| **Delivery Channels** | Email, iOS, Slack, Webhooks, Web | Email, Web | Email, Web | Email, RSS, Web | Mobile app only |
++| **Personalization** | Per-scout prompt only | Cross-scout learning + critic loop | Per-query only | Per-feed only | Per-user search history |
++| **Live Artifacts** | Yes (shareable HTML dashboards) | No | No | No | No |
++| **Team Collaboration** | View/subscribe only (no editing) | No | No | No | No |
++| **Pricing Model** | Per-run usage | TBD | Free + Pro subscription | Free + Pro subscription | Free |
++| **MCP Support** | Yes (Design Ecosystem) | No | No | No | No |
++| **Browser Automation** | Yes (cloud-based) | No | No | No | No |
++| **Local Execution** | Yes (Yutori Local tier) | No | No | No | No |
++
++**Key Takeaway:** Yutori is the only general-purpose agentic scout platform with browser automation and live artifacts. Thedi differentiates by being deeper in research with a critique pipeline. Elicit and Feedly Leo are more mature in their verticals but lack agent autonomy. Arc Search is mobile-only and doesn't support persistent monitoring.
++
++### 14.2 Competitor Deep Dives
++
++**Elicit (elicit.com)**
++- **Focus:** Academic literature review and research synthesis
++- **Strengths:** Large paper database, citation graph, structured extraction
++- **Weaknesses:** No web monitoring, no browser automation, no persistent scouts
++- **Thedi Position:** Thedi can match Elicit's research depth while adding persistent monitoring (Yutori's strength)
++
++**Feedly Leo (feedly.com/leo)**
++- **Focus:** RSS feed curation with AI summarization
++- **Strengths:** Mature RSS infrastructure, team sharing, integrations
++- **Weaknesses:** No web monitoring beyond RSS, no browser automation, single-agent
++- **Thedi Position:** Thedi can match Feedly's feed curation while adding web monitoring and multi-agent critique
++
++**Arc Search (arcsearch.app)**
++- **Focus:** Mobile-first AI web browsing
++- **Strengths:** Excellent mobile UX, fast search, clean summaries
++- **Weaknesses:** No persistent monitoring, no browser automation, no team features
++- **Thedi Position:** Thedi can match Arc's UX while adding persistent monitoring and team collaboration
++
++**Perplexity (perplexity.ai)**
++- **Focus:** AI-powered search engine
++- **Strengths:** Real-time web search, citation tracking, Pro features
++- **Weaknesses:** No persistent monitoring, no browser automation, no team features
++- **Thedi Position:** Thedi can match Perplexity's search while adding persistent monitoring and multi-agent critique
++
++**Note:** The doc currently references `docs/features/research-scout-landscape.md` for broader competitive set. This section should be updated to include the above competitors with specific feature comparisons.
++
+ ### 11.1 Additional Founder Quotes
+ From Fortune interview (Devi Parikh):
+ > "The web is simultaneously one of humanity's greatest inventions—and really, really clunky."

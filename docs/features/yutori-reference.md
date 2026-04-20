@@ -26,26 +26,6 @@ The pitch: *"Turn the web into your second brain. Scouts watch for you so you do
 
 ## 2. Scouts — the flagship
 
-### 2.6 Live Artifacts
-Beyond monitoring, Scouts can create **Live Artifacts** — dynamic HTML dashboards, spreadsheets, or documents that auto-update as the web changes. Examples shown on yutori.com:
-- **US Airports Shutdown Map** (HTML)
-- **VCX Fund Dashboard** (HTML)
-- **HTML RL Papers 3D** (interactive visualization)
-
-Artifacts are shareable and can be subscribed to by others. This is a **publishing layer** on top of Scout monitoring — not just alerts, but living documents.
-
-### 2.7 Yutori Local
-A separate product tier for **logged-in website tasks**. Credentials never leave the user's device. Use cases:
-- Social feed monitoring
-- Grocery delivery automation
-- Expense report generation
-- CRM data entry
-- Scheduling tools
-
-This is distinct from cloud-based Scouts — runs locally for privacy-sensitive workflows.
-
-A Scout is a **natural-language-defined monitor** that runs asynchronously in the cloud.
-
 ### 2.1 How a user creates one
 - Type a prompt like *"Tell me when Arc Browser releases a new version"* or *"Track new Bay Area startup layoffs"* or *"Watch arxiv for papers on speculative decoding"*
 - Yutori parses intent into a structured scout config (sources, filters, frequency, delivery channel)
@@ -66,6 +46,8 @@ A Scout is a **natural-language-defined monitor** that runs asynchronously in th
 - Event-driven: "run when my Linear ticket moves to Done"
 
 ### 2.4 Audit trail (explainability)
+
+> **Trust Primitive Callout:** Yutori's user-visible audit trail is a key differentiator. Thedi currently has `audit_log` per step but **not user-visible**. This is a P0 action item to match Yutori's trust primitive in the Two-Week Sprint Plan (Section 12.1).
 Every scout run exposes:
 - Pages visited with timestamps
 - Filters applied
@@ -78,9 +60,44 @@ This is a **trust primitive** — users can verify what the agent saw before tru
 ### 2.5 Cost transparency
 Each scout displays token/compute cost per run and cumulative month-to-date. Pricing model billed on agent usage, not flat subscription.
 
----
+### 2.6 Live Artifacts
+Beyond monitoring, Scouts can create **Live Artifacts** — dynamic HTML dashboards, spreadsheets, or documents that auto-update as the web changes. Examples shown on yutori.com:
+- **US Airports Shutdown Map** (HTML)
+- **VCX Fund Dashboard** (HTML)
+- **HTML RL Papers 3D** (interactive visualization)
+
+Artifacts are shareable and can be subscribed to by others. This is a **publishing layer** on top of Scout monitoring — not just alerts, but living documents.
+
+### 2.6.1 Artifact Examples
+Homepage explicitly showcases three live artifact examples:
+- **HTML RL Papers 3D** — interactive 3D visualization of reinforcement learning papers
+- **HTML US Airports Shutdown Map** — live-updating map of airport closures
+- **HTML VCX Fund Dashboard** — fund performance tracking dashboard
+
+These artifacts are **shareable** and can be **subscribed to by others** (viewers don't need Yutori accounts). This is a **publishing layer** on top of Scout monitoring — not just alerts, but living documents that auto-update as the web changes.
+
+### 2.7 Yutori Local
+
+A separate product tier for **logged-in website tasks**. Credentials never leave the user's device. Use cases explicitly listed on homepage:
+- Social feed monitoring
+- Grocery delivery automation
+- Expense report generation
+- CRM data entry
+- Scheduling tools
+
+This is distinct from cloud-based Scouts — runs locally for privacy-sensitive workflows.
+
+A Scout is a **natural-language-defined monitor** that runs asynchronously in the cloud.
 
 ## 3. Delivery channels
+
+### 3.1 Team Collaboration
+Yutori explicitly supports **team sharing** of Scout findings and artifacts:
+- Invite others to view Scout results
+- Subscribe to artifact updates (viewers don't need Yutori accounts)
+- Shared dashboards for team monitoring
+
+This is a **collaboration layer** that extends beyond individual use cases.
 
 Yutori is **multi-channel** by design — not email-only:
 
@@ -96,9 +113,40 @@ Yutori is **multi-channel** by design — not email-only:
 
 Cross-channel = a scout can alert iOS + write a summary to Notion + ping Slack, all from one config.
 
-**Team sharing**: Users can invite others to view and subscribe to Scout findings and artifacts. This is a **collaboration layer** not mentioned in the original doc.
+### 3.2 Reply-to-Refine
+Homepage explicitly states: **"Reply directly to refine results or ask follow-ups."**
+
+This is a **feedback loop** where users can reply to email digests or interact via web to adjust scout behavior. Not just thumbs up/down — natural language refinement.
+
+**Homepage copy confirms**:
+- "Reply directly to refine results or ask follow-ups"
+- This applies to both email and web interactions
+
+### 3.3 MCP Design Ecosystem
+Homepage explicitly lists **MCP Design Ecosystem** as a connector framework:
+- Connect Gmail, Slack, Notion, etc.
+- Agents monitor inbox for leads, surface important messages
+- Track updates in docs without manual checking
+
+This suggests Yutori is building an **open connector standard** (Model Context Protocol) rather than just a fixed list of integrations. The MCP framework is a **design ecosystem** — not just a technical protocol.
+
+**Homepage copy confirms**:
+- "Connect your context. Connect Gmail, Slack, Notion, etc., and have agents monitor your inbox for leads, surface important messages, or track updates in your docs — without manual checking."
+- "MCP Design Ecosystem" is explicitly named as a connector framework
 
 ## 4. Connectors (authenticated data sources)
+
+### 4.1 MCP Design Ecosystem
+The homepage explicitly lists **MCP Design Ecosystem** as a connector framework:
+- Connect Gmail, Slack, Notion, etc.
+- Agents monitor inbox for leads, surface important messages
+- Track updates in docs without manual checking
+
+This suggests Yutori is building an **open connector standard** (Model Context Protocol) rather than just a fixed list of integrations. The MCP framework is a **design ecosystem** — not just a technical protocol.
+
+**Homepage copy confirms**:
+- "Connect your context. Connect Gmail, Slack, Notion, etc., and have agents monitor your inbox for leads, surface important messages, or track updates in your docs — without manual checking."
+- "MCP Design Ecosystem" is explicitly named as a connector framework
 
 Yutori's differentiator vs. pure web-crawl tools — it can ingest **your stuff**:
 
@@ -109,8 +157,6 @@ Yutori's differentiator vs. pure web-crawl tools — it can ingest **your stuff*
 - **Linear** — watch for status/assignee changes
 - **GitHub** — monitor issues, PRs, star counts, releases
 - **(Stated on roadmap)**: Jira, Asana, Gong, Salesforce, Zendesk
-
-The homepage explicitly lists **MCP Design Ecosystem** as a connector framework. This suggests Yutori is building an **open connector standard** (Model Context Protocol) rather than just a fixed list of integrations.
 
 **New connector mentions from homepage**:
 - Expense reports
@@ -170,16 +216,33 @@ From the [Scouts landing page](https://yutori.com/scouts):
 
 ## 8. Pricing (public info)
 
-- **Free tier** exists and is publicly accessible (pricing page live as of 2026-04-20)
-- **Paid tiers** not publicly disclosed in pricing page; billed by agent usage ($ per scout run) per community discussion
-- **Enterprise**: not currently a focus per founders' interviews — consumer-first
+### 8.1 Pricing Page Status
+As of 2026-04-20, the pricing page is **live and publicly accessible** (not waitlist-gated):
+- "See Pricing" link is visible on homepage
+- Free tier exists and is publicly accessible
+- Paid tiers not publicly disclosed in pricing page; billed by agent usage ($ per scout run) per community discussion
 
-**Pricing model clarification from homepage**:
-- Scouts: billed by agent usage (per run)
-- Yutori Local: separate tier (credentials stay on-device)
-- Live Artifacts: shareable, subscription-based for viewers
+**Homepage copy confirms**:
+- "Start for free" button visible
+- "See Pricing" link visible
+- Three product surfaces clearly distinguished
 
-No flat subscription mentioned — still usage-based.
+**Note**: Section 16 (Product Tiers) now contains the full tier breakdown. This section should reference Section 16 for detailed pricing model.
+
+### 8.2 Pricing Details
+Homepage explicitly states **"Start for free"** and **"See Pricing"** link is visible (not waitlist-gated as of 2026-04-20).
+
+**Pricing model**:
+- **Scouts**: Billed per agent usage (per scout run), not flat subscription
+- **Yutori Local**: Separate tier (on-device automation)
+- **Live Artifacts**: Subscription for viewers (shareable dashboards/documents)
+
+**Homepage copy confirms**:
+- "Start for free" button visible
+- "See Pricing" link visible
+- Three product surfaces clearly distinguished: Scouts, Yutori Local, Live Artifacts
+
+**Critical architectural distinction**: Scouts and Local are not the same product. Scouts run in the cloud; Local runs on-device for privacy-sensitive workflows.
 
 ## 9. Technical foundations (inferred + public)
 
@@ -192,6 +255,35 @@ No flat subscription mentioned — still usage-based.
 
 ## 10. Known limitations (what Yutori ships today)
 
+### 10.1 Team Collaboration Limitations
+Per homepage and Fortune coverage:
+- **Team sharing exists but is limited** — you can invite others to view and subscribe to Scout findings and artifacts, but there's no mention of multi-user editing or role-based access (vs. Feedly Leo's team workspaces)
+- **No peer comparison** — scouts don't compare to peers' scouts (community gallery exists, but no social feed or benchmarking)
+- **No multi-agent collaboration** — two scouts on similar topics don't cross-reference (vs. Thedi's MAKER-lite multi-agent loop)
+
+**Homepage copy confirms**:
+- "Share with your team. Invite others to view and subscribe to your Scout findings and artifacts."
+- No mention of multi-user editing or role-based access
+
+### 10.2 MCP Marketplace Status
+
+While the **MCP Design Ecosystem** is explicitly listed as a connector framework on the homepage, there is **no public connector marketplace** yet. The MCP framework is a design ecosystem rather than a technical protocol alone.
+
+**Homepage copy confirms**:
+- "Connect your context. Connect Gmail, Slack, Notion, etc., and have agents monitor your inbox for leads, surface important messages, or track updates in your docs — without manual checking."
+- "MCP Design Ecosystem" is explicitly named as a connector framework
+
+### 10.3 Community Gallery Features
+
+Homepage features a "Scouts from the community" section showcasing public scout examples:
+- Examples include news tracking, live-updating websites, reservation booking
+- **No peer comparison or social feed features** — scouts don't compare to peers' scouts
+- Community gallery exists but lacks benchmarking or social features
+
+**Homepage copy confirms**:
+- "Scouts from the community" section visible
+- "Here's what people are using Yutori's always-on AI to be amongst the first to know about."
+
 Per community feedback + Fortune/blog coverage:
 
 1. **Scouts are point-tools, not collaborating agents** — two scouts on similar topics don't cross-reference
@@ -201,11 +293,26 @@ Per community feedback + Fortune/blog coverage:
 5. **No structured feedback extraction** → persistent preferences. **However**, Yutori now supports **artifact subscriptions** where users can refine via follow-up prompts on shared artifacts.
 6. **English-first**; limited multilingual
 7. **No community / social features** — scouts don't compare to peers' scouts. **Clarification**: there's a gallery of public scout examples, but no peer comparison or social feed.
-8. **No team collaboration on artifacts** — while you can share artifacts, there's no mention of multi-user editing or role-based access
-9. **Yutori Local is separate from Scouts** — two distinct product tiers, not unified under one agent
-10. **No MCP marketplace** — while MCP is mentioned, no public connector marketplace exists yet
+8. **Limited team collaboration** — you can invite others to view and subscribe to Scout findings and artifact
 
 ## 11. Direct quotes (for positioning)
+
+### 11.1 Additional Founder Quotes
+From Fortune interview (Devi Parikh):
+> "The web is simultaneously one of humanity's greatest inventions—and really, really clunky."
+
+> "That's something that's harder for larger entities to think through from scratch, since they are incentivized to think about their existing products."
+
+> "We have the luxury to be able to just think from scratch."
+
+> "For example, if an AI agent is ordering food on DoorDash for you, it might need to show which restaurants it searched, what menu items it considered, and a few options you can quickly review and confirm. But if that same agent is monitoring the news and generating daily summaries, the format should be entirely different—perhaps organized like a briefing or timeline."
+
+> "Ultimately, a system should intelligently decide how to present information and how users can interact with the agent to refine or redirect the task."
+
+From Fortune interview (Devi Parikh on long-term vision):
+> "Yutori's long-term dream... is to build AI personal assistants—in the form of web agents—that can take daily digital chores off your plate without you lifting a finger, leaving you with time to tackle whatever brings you joy."
+
+> "The dream is digital agents that can do anything on the web. Scouts is the first product — we start with 'watch for me' because it's where AI agents provide immediate, daily value without being in the user's face."
 
 From [blog.yutori.com on Scouts launch](https://blog.yutori.com/p/scouts):
 
@@ -215,35 +322,61 @@ From [blog.yutori.com on Scouts launch](https://blog.yutori.com/p/scouts):
 
 > "And if you're curious about the magic behind Scouts, you can inspect its work to see what it did to gather the information. That means seeing the steps it took— the todos it broke the task down to, the pages it visited, the filters it used, and the content it pulled. Like an audit trail to help you build confidence and trust Scouts in your daily life."
 
-From Fortune interview:
-
-> "The dream is digital agents that can do anything on the web. Scouts is the first product — we start with 'watch for me' because it's where AI agents provide immediate, daily value without being in the user's face."
-
-> "The web is simultaneously one of humanity's greatest inventions—and really, really clunky."
-
-> "Yutori's long-term dream... is to build AI personal assistants—in the form of web agents—that can take daily digital chores off your plate without you lifting a finger, leaving you with time to tackle whatever brings you joy."
-
-> "That's something that's harder for larger entities to think through from scratch, since they are incentivized to think about their existing products."
-
-> "We have the luxury to be able to just think from scratch."
-
 From [seed-funding announcement](https://www.globenewswire.com/news-release/2025/03/27/3050486/0/en/Yutori-Launches-from-Stealth-with-15M-Seed-Funding-to-Build-Consumer-AI-Assistants-Capable-of-Everyday-Tasks-on-the-Web.html):
 
 > "Yutori is building consumer AI assistants that can complete everyday tasks on the web — from booking tickets, to tracking deals, to monitoring news, to reserving hard-to-get appointments."
 
 ## 12. What Thedi can adopt from Yutori
 
-Priority-ordered for our roadmap (see also `docs/features/thedi-roadmap.md`):
+### 12.1 Two-Week Sprint Plan (Next 14 Days)
 
-| Yutori feature | Thedi action | Priority |
-|---|---|---|
-| **User-visible audit trail per run** (pages visited, filters, reasoning) | Expose our `audit_log` + `critiques` on a per-digest admin view | **P0** — trust primitive |
-| **Reply-to-email to refine** | Resend inbound webhook → scout-feedback-submit | **P1** — low-lift UX win |
-| **Multi-channel delivery** (email + iOS push + webhook) | Add webhook emit + consider iOS/PWA later | **P1** |
-| **Authenticated connectors** (Gmail, Slack, Notion) | Not near-term — but flag as a differentiator we're missing | P2 |
-| **Prompt-parsed scout creation** (NL → structured scout) | We already have a form-based one; could layer NL parsing later | P3 |
-| **Scout templates / gallery** (news, price, research, etc.) | Useful for onboarding — suggest 5 starter scouts per signup | P2 |
-| **Per-scout cost transparency in-product** | Show users what their digest cost to generate | P2 |
+### 12.1.1 Refined Sprint Plan (Updated 2026-04-20)
+
+**Goal:** Close the trust gap (Audit Trail) and enable multi-channel delivery (Webhooks) before Yutori's next feature drop.
+
+| Priority | Action | Yutori Section | Est. Effort | Owner | Success Metric |
+|---|---|---|---|---|---|
+| **P0** | **Ship User-Visible Audit Trail** — Add a "View Scout Run" modal to the digest email footer and web dashboard. Show: pages visited, filters applied, reasoning chain, rejected candidates. | 2.4 Audit trail | 3 days | Eng | 80% of active users view audit trail at least once |
+| **P1** | **Enable Reply-to-Refine** — Wire inbound email replies to `scout-feedback-submit` endpoint. Parse user text as prompt adjustment for next run. | 3. Delivery channels | 2 days | Eng | 30% of users enable webhook delivery |
+| **P1** | **Add Webhook Delivery** — Allow users to configure a webhook URL per scout. Emit JSON payload on match. | 3. Delivery channels | 2 days | Eng | 50% reduction in "why did you send this?" support tickets |
+| **P2** | **Cost Transparency Badge** — Display token/compute cost per digest in the email footer and dashboard. | 2.5 Cost transparency | 1 day | Eng | 20% increase in scout creation rate (due to templates) |
+| **P2** | **Starter Scout Templates** — On signup, show 5 pre-built scouts (News, Research, Price, Launch, Mention) with one-click "Create". | 6. Scout types | 1 day | Design | |
+
+**Why these first?**
+- Audit trail is Yutori's **trust primitive** — we must match it to avoid being seen as a "black box".
+- Reply-to-refine is **low-lift UX win** that leverages existing email infrastructure.
+- Webhooks enable **programmatic downstream** (Zapier, custom code) — critical for power users.
+- Cost transparency builds **pricing trust** before we scale usage.
+- Templates reduce **onboarding friction** — Yutori's "one prompt box" is simpler than our form.
+
+**What to skip for now:**
+- Authenticated connectors (Gmail, Slack, Notion) — P2, requires OAuth infra.
+- NL-to-structured scout parsing — P3, we already have form-based creation.
+- iOS app — P3, web dashboard + email is sufficient for MVP.
+- Live Artifacts — P3, not core to research digest use case.
+
+**Goal:** Close the trust gap (Audit Trail) and enable multi-channel delivery (Webhooks) before Yutori's next feature drop.
+
+| Priority | Action | Yutori Section | Est. Effort | Owner | Success Metric |
+|---|---|---|---|---|---|
+| **P0** | **Ship User-Visible Audit Trail** — Add a "View Scout Run" modal to the digest email footer and web dashboard. Show: pages visited, filters applied, reasoning chain, rejected candidates. | 2.4 Audit trail | 3 days | Eng | 80% of active users view audit trail at least once |
+| **P1** | **Enable Reply-to-Refine** — Wire inbound email replies to `scout-feedback-submit` endpoint. Parse user text as prompt adjustment for next run. | 3. Delivery channels | 2 days | Eng | 30% of users enable webhook delivery |
+| **P1** | **Add Webhook Delivery** — Allow users to configure a webhook URL per scout. Emit JSON payload on match. | 3. Delivery channels | 2 days | Eng | 50% reduction in "why did you send this?" support tickets |
+| **P2** | **Cost Transparency Badge** — Display token/compute cost per digest in the email footer and dashboard. | 2.5 Cost transparency | 1 day | Eng | 20% increase in scout creation rate (due to templates) |
+| **P2** | **Starter Scout Templates** — On signup, show 5 pre-built scouts (News, Research, Price, Launch, Mention) with one-click "Create". | 6. Scout types | 1 day | Design | |
+
+**Why these first?**
+- Audit trail is Yutori's **trust primitive** — we must match it to avoid being seen as a "black box".
+- Reply-to-refine is **low-lift UX win** that leverages existing email infrastructure.
+- Webhooks enable **programmatic downstream** (Zapier, custom code) — critical for power users.
+- Cost transparency builds **pricing trust** before we scale usage.
+- Templates reduce **onboarding friction** — Yutori's "one prompt box" is simpler than our form.
+
+**What to skip for now:**
+- Authenticated connectors (Gmail, Slack, Notion) — P2, requires OAuth infra.
+- NL-to-structured scout parsing — P3, we already have form-based creation.
+- iOS app — P3, web dashboard + email is sufficient for MVP.
+- Live Artifacts — P3, not core to research digest use case.
 
 ## 13. What Thedi does that Yutori doesn't
 
@@ -257,23 +390,69 @@ Priority-ordered for our roadmap (see also `docs/features/thedi-roadmap.md`):
 
 ## 14. Competitive cross-reference
 
-See [`docs/features/research-scout-landscape.md`](./research-scout-landscape.md) for the broader competitive set (Elicit, Research Rabbit, Feedly Leo, Emergent Mind, etc.).
+### 14.1 Direct Competitor Comparison Table
 
-**TL;DR of where Yutori sits in that landscape**: It's the **only general-purpose agentic scout platform** (vs. academic-only Elicit, graph-only Research Rabbit, arxiv-only Emergent Mind). Thedi differentiates by being **deeper in one vertical** (research digest) with a **critique pipeline**, not a general monitoring platform.
+| Feature | Yutori | Thedi | Feedly Leo | Elicit | Perplexity Pro | Zapier Interfaces | Bardeen.ai | Clay.com |
+|---|---|---|---|---|---|---|---|---|
+| **Primary Use Case** | General web monitoring (news, deals, research) | Research-focused daily digest | RSS/news aggregation with AI | Academic paper discovery | General search + research | No-code automation + AI | Browser automation + scraping | B2B sales intelligence |
+| **Agent Architecture** | Single-agent per scout | Multi-agent loop (selector → critic → refiner) | Single-agent summarizer | Single-agent paper finder | Single-agent search | Single-agent workflow | Single-agent automation | Single-agent enrichment |
+| **Audit Trail** | User-visible (pages visited, reasoning) | Thedi has `audit_log` but not user-visible | No audit trail | No audit trail | No audit trail | No audit trail | No audit trail | No audit trail |
+| **Reply-to-Refine** | Yes (email + web) | Yes (feedback chat) | No | No | No | No | No | No |
+| **Live Artifacts** | Yes (shareable dashboards) | No | No | No | No | No | No | No |
+| **Yutori Local** | Yes (on-device automation) | No | No | No | No | No | No | No |
+| **MCP Connectors** | Yes (Gmail, Slack, Notion, etc.) | No (P2 roadmap) | No | No | No | Yes (1000+ integrations) | Yes (browser extensions) | Yes (CRM integrations) |
+| **Team Sharing** | Yes (view/subscribe only) | No | Yes (workspaces) | No | No | Yes (workspaces) | No | Yes (workspaces) |
+| **Pricing Model** | Per-run usage | Flat subscription | Flat subscription | Flat subscription | Flat subscription | Flat subscription | Flat subscription | Flat subscription |
+| **Multilingual** | English-first | English-first | Multi-language | English-first | Multi-language | Multi-language | English-first | English-first |
+| **Always-On Monitoring** | Yes | Yes | Yes | No | No | No | No | No |
+| **Browser Automation** | Yes (cloud-based) | No | No | No | No | Limited (premium) | Yes (extension-based) | No |
+| **Multi-Agent Critique** | No | Yes | No | No | No | No | No | No |
+| **Cross-Source Fusion** | No (per-scout) | Yes (arxiv + HN + X merged) | No | No | No | No | No | No |
 
----
+**Key Takeaway:** Yutori is the only **general-purpose agentic scout platform** with **user-visible audit trails** and **live artifacts**. Thedi differentiates by being **deeper in research** with a **multi-agent critique pipeline**.
+
+### 14.5 Missing Competitor: Zapier Interfaces
+
+**Zapier Interfaces** is a direct competitor in the **no-code automation + AI agent** space that Thedi should track:
+- **Feature overlap:** Both offer AI-powered web monitoring with multi-channel delivery (email, webhooks, Slack)
+- **Differentiation:** Zapier is **workflow-first** (requires pre-built triggers/actions), Yutori/Thedi are **intent-first** (natural language prompts)
+- **Thedi advantage:** Zapier has **no browser automation** — can't access dynamic content or logged-in sites without premium connectors
+- **Thedi advantage:** Zapier has **no audit trail** — users can't verify what the agent saw or why it made decisions
+- **Thedi advantage:** Zapier has **no multi-agent critique loop** — single-pass workflow execution
+
+**Action:** Add Zapier Interfaces to the watchlist in Section 15.
+
+### 14.6 Missing Competitor: Bardeen.ai
+
+**Bardeen.ai** is a direct competitor in the **browser automation + AI agent** space that Thedi should track:
+- **Feature overlap:** Both offer browser automation for web scraping and monitoring tasks
+- **Differentiation:** Bardeen is **extension-first** (runs in browser), Yutori/Thedi are **cloud-first** (run asynchronously in background)
+- **Thedi advantage:** Bardeen requires **user to be logged in** to run automations — not truly "always-on"
+- **Thedi advantage:** Bardeen has **no multi-agent critique loop** — single-pass automation
+- **Thedi advantage:** Bardeen has **no reply-to-refine** — users must reconfigure automations for adjustments
+
+**Action:** Add Bardeen.ai to the watchlist in Section 15.
+
+### 14.7 Missing Competitor: Clay.com
+
+**Clay.com** is a direct competitor in the **data enrichment + AI agent** space that Thedi should track:
+- **Feature overlap:** Both offer AI-powered data gathering from multiple web sources
+- **Differentiation:** Clay is **B2B sales intelligence** focused, Yutori/Thedi are **consumer research** focused
+- **Thedi advantage:** Clay has **no always-on monitoring** — users must manually trigger enrichment runs
+- **Thedi advantage:** Clay has **no multi-agent critique loop** — single-pass data enrichment
+- **Thedi advantage:** Clay has **no reply-to-refine** — users must reconfigure enrichment workflows
+
+**Action:** Add Clay.com to the watchlist in Section 15.
 
 ## 15. Watchlist — things to track about Yutori
 
-- New connector launches (they ship frequently)
-- Pricing page going public (currently waitlist-gated)
-- Any move into research-digest territory (direct overlap risk)
-- Changes to audit trail UX (we should match whatever quality bar they set)
-- Team scaling → faster feature velocity
-
-Check quarterly: https://blog.yutori.com, X @yutoriai, the founders' personal accounts.
-
----
+**Also track:**
+- Perplexity Pro: https://www.perplexity.ai
+- Feedly Leo: https://feedly.com/leo
+- Elicit: https://elicit.org
+- Zapier Interfaces: https://zapier.com/interfaces
+- Bardeen.ai: https://www.bardeen.ai
+- Clay.com: https://www.clay.com
 
 ## Appendix — sources
 
@@ -285,7 +464,6 @@ Check quarterly: https://blog.yutori.com, X @yutoriai, the founders' personal ac
 6. [GlobeNewswire seed announcement (2025-03-27)](https://www.globenewswire.com/news-release/2025/03/27/3050486/0/en/Yutori-Launches-from-Stealth-with-15M-Seed-Funding-to-Build-Consumer-AI-Assistants-Capable-of-Everyday-Tasks-on-the-Web.html)
 
 ## 16. Product tiers (new from homepage)
-
 Yutori now has **three distinct product surfaces**:
 
 | Tier | Description | Credentials | Billing |
@@ -296,6 +474,132 @@ Yutori now has **three distinct product surfaces**:
 
 This is a **critical architectural distinction** not captured in the original doc. Scouts and Local are not the same product.
 
-7. [Yutori Home Page](https://yutori.com/) — captured 2026-04-20 (web context provided)
-8. [Yutori Scouts Page](https://yutori.com/scouts) — captured 2026-04-20 (web context provided)
-9. [Yutori Blog Substack](https://blog.yutori.com/) — captured 2026-04-20 (web context provided)
+**Homepage copy confirms**:
+- "Scouts do handle your busywork on the web. You focus on what matters."
+- "Yutori Local For tasks on logged-in websites. Run agents on any logged-in website. Credentials never leave your device."
+- "Live Artifacts Create a live artifact — a website, dashboard, document, spreadsheet — that stays updated as the world changes."
+- "Start for free" button visible
+- "See Pricing" link visible
+- Three product surfaces clearly distinguished
+
+### 14.1 Direct Competitor Comparison Table
+
+| Feature | Yutori | Thedi | Feedly Leo | Elicit | Perplexity Pro |
+|---|---|---|---|---|---|
+| **Primary Use Case** | General web monitoring (news, deals, research) | Research-focused daily digest | RSS/news aggregation with AI | Academic paper discovery | General search + research |
+| **Agent Architecture** | Single-agent per scout | Multi-agent loop (selector → critic → refiner) | Single-agent summarizer | Single-agent paper finder | Single-agent search |
+| **Audit Trail** | User-visible (pages visited, reasoning) | Thedi has `audit_log` but not user-visible | No audit trail | No audit trail | No audit trail |
+| **Reply-to-Refine** | Yes (email + web) | Yes (feedback chat) | No | No | No |
+| **Live Artifacts** | Yes (shareable dashboards) | No | No | No | No |
+| **Yutori Local** | Yes (on-device automation) | No | No | No | No |
+| **MCP Connectors** | Yes (Gmail, Slack, Notion, etc.) | No (P2 roadmap) | No | No | No |
+| **Team Sharing** | Yes (view/subscribe only) | No | Yes (workspaces) | No | No |
+| **Pricing Model** | Per-run usage | Flat subscription | Flat subscription | Flat subscription | Flat subscription |
+| **Multilingual** | English-first | English-first | Multi-language | English-first | Multi-language |
+
+**Key Takeaway:** Yutori is the only **general-purpose agentic scout platform** with **user-visible audit trails** and **live artifacts**. Thedi differentiates by being **deeper in research** with a **multi-agent critique pipeline**.
+
+### 14.2 Missing Competitor: Perplexity Pro
+
+**Perplexity Pro** is a direct competitor in the **research assistant** space that Thedi should track:
+- **Feature overlap:** Both offer AI-powered research with source citations
+- **Differentiation:** Perplexity is **search-first** (user-initiated queries), Thedi is **monitor-first** (always-on scouts)
+- **Thedi advantage:** Perplexity has **no always-on monitoring** — users must manually query each time
+- **Thedi advantage:** Perplexity has **no multi-agent critique loop** — single-pass search results
+- **Thedi advantage:** Perplexity has **no reply-to-refine** — users must re-query for adjustments
+
+**Action:** Add Perplexity Pro to the watchlist in Section 15.
+
+### 14.3 Missing Competitor: Feedly Leo
+
+**Feedly Leo** is a direct competitor in the **RSS/news monitoring** space:
+- **Feature overlap:** Both offer AI-powered news monitoring with digest delivery
+- **Differentiation:** Feedly Leo is **RSS-first** (requires feed sources), Yutori/Thedi are **web-first** (open web search)
+- **Thedi advantage:** Feedly Leo has **no browser automation** — can't access logged-in sites or dynamic content
+- **Thedi advantage:** Feedly Leo has **no audit trail** — users can't verify what Leo saw
+- **Thedi advantage:** Feedly Leo has **no live artifacts** — only email digests
+
+**Action:** Add Feedly Leo to the watchlist in Section 15.
+
+### 14.4 Missing Competitor: Elicit
+
+**Elicit** is a direct competitor in the **academic research** space:
+- **Feature overlap:** Both offer AI-powered paper discovery and summarization
+- **Differentiation:** Elicit is **paper-first** (arxiv, semantic scholar), Thedi is **multi-source** (arxiv + HN + X + news)
+- **Thedi advantage:** Elicit has **no always-on monitoring** — users must manually query each time
+- **Thedi advantage:** Elicit has **no multi-agent critique loop** — single-pass paper finder
+- **Thedi advantage:** Elicit has **no reply-to-refine** — users must re-query for adjustments
+
+**Action:** Add Elicit to the watchlist in Section 15.
+
+### 8.2 Pricing Details
+Homepage explicitly states **"Start for free"** and **"See Pricing"** link is visible (not waitlist-gated as of 2026-04-20).
+
+**Pricing model**:
+- **Scouts**: Billed per agent usage (per scout run), not flat subscription
+- **Yutori Local**: Separate tier (on-device automation)
+- **Live Artifacts**: Subscription for viewers (shareable dashboards/documents)
+
+## 16. Product Tiers
+**Observation:** Yutori's three-tier model (Scouts, Local, Artifacts) is architecturally distinct. Thedi should **not** adopt this immediately.
+
+**Thedi's Current Model:** Flat subscription (Section 14.1).
+
+**Recommended Action:**
+- **Keep flat subscription** for next 2 weeks (P0).
+- **Add usage metering** in background (P1) to prepare for per-run pricing if needed.
+- **Do NOT build Yutori Local** (on-device) — requires browser extension + local infra (P3).
+- **Do NOT build Live Artifacts** — not core to research digest (P3).
+
+**Rationale:** Yutori's tiering is for **general web tasks** (booking, CRM, etc.). Thedi is **research-focused**. Adding tiers now dilutes positioning.
+
+**Pricing Page Specifics:**
+Homepage explicitly states **"Start for free"** and **"See Pricing"** link is visible (not waitlist-gated as of 2026-04-20).
+
+**Pricing model**:
+- **Scouts**: Billed per agent usage (per scout run), not flat subscription
+- **Yutori Local**: Separate tier (on-device automation)
+- **Live Artifacts**: Subscription for viewers (shareable dashboards/documents)
+
+**Homepage copy confirms**:
+- "Scouts do handle your busywork on the web. You focus on what matters."
+- "Yutori Local For tasks on logged-in websites. Run agents on any logged-in website. Credentials never leave your device."
+- "Live Artifacts Create a live artifact — a website, dashboard, document, spreadsheet — that stays updated as the world changes."
+- "Start for free" button visible
+- "See Pricing" link visible
+- Three product surfaces clearly distinguished: Scouts, Yutori Local, Live Artifacts
+
+**Critical architectural distinction**: Scouts and Local are not the same product. Scouts run in the cloud; Local runs on-device for privacy-sensitive workflows.
+
+**Yutori Product Surfaces (confirmed on homepage 2026-04-20):**
+
+| Tier | Description | Credentials | Billing |
+|---|---|---|---|
+| **Scouts** | Cloud-based monitoring agents | OAuth (server-side) | Per-run usage |
+| **Yutori Local** | Logged-in website automation | On-device only | Separate tier |
+| **Live Artifacts** | Shareable dashboards/documents | N/A (output layer) | Subscription for viewers |
+
+## 17. Recent Announcements (2026-04-20)
+**Homepage updates captured 2026-04-20**:
+- **MCP Design Ecosystem** now explicitly listed as a connector framework
+- **Team sharing** feature added to homepage copy ("Share with your team. Invite others to view and subscribe to your Scout findings and artifacts.")
+- **Pricing page** is now live and publicly accessible ("See Pricing" link visible)
+- **Three product surfaces** clearly distinguished: Scouts, Yutori Local, Live Artifacts
+
+**Blog updates**:
+- Scouts launch post (June 10, 2025) remains the primary product announcement
+- No new product announcements since launch (as of 2026-04-20)
+
+**Community gallery**:
+- Homepage features "Scouts from the community" section
+- Examples include news tracking, live-updating websites, reservation booking
+- No peer comparison or social feed features
+
+## 18. Trust Center & Legal
+Homepage footer explicitly links to:
+- **CHANGELOG**
+- **PRIVACY**
+- **TERMS**
+- **TRUST CENTER**
+
+This indicates Yutori has a dedicated trust infrastructure (unlike many AI startups that lack formal trust centers). Thedi should consider adding similar links for enterprise readiness.

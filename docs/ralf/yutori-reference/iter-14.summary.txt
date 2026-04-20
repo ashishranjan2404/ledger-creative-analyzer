@@ -1,0 +1,73 @@
+Consolidated duplicate pricing sections, added Product Tiers table with architectural distinctions, and appended Recent Announcements and Trust Center sections from homepage footer.
+
+PROPOSALS:
+[
+  {
+    "additions": [
+      {
+        "section": "16. Product Tiers",
+        "content": "### 16.1 Pricing Page Details\nHomepage explicitly states **\"Start for free\"** and **\"See Pricing\"** link is visible (not waitlist-gated as of 2026-04-20).\n\n**Pricing model**:\n- **Scouts**: Billed per agent usage (per scout run), not flat subscription\n- **Yutori Local**: Separate tier (on-device automation)\n- **Live Artifacts**: Subscription for viewers (shareable dashboards/documents)\n\n**Homepage copy confirms**:\n- \"Start for free\" button visible\n- \"See Pricing\" link visible\n- Three product surfaces clearly distinguished: Scouts, Yutori Local, Live Artifacts"
+      },
+      {
+        "section": "17. Recent Announcements (2026-04-20)",
+        "content": "**Homepage updates captured 2026-04-20**:\n- **MCP Design Ecosystem** now explicitly listed as a connector framework\n- **Team sharing** feature added to homepage copy (\"Share with your team. Invite others to view and subscribe to your Scout findings and artifacts.\")\n- **Pricing page** is now live and publicly accessible (\"See Pricing\" link visible)\n- **Three product surfaces** clearly distinguished: Scouts, Yutori Local, Live Artifacts\n\n**Blog updates**:\n- Scouts launch post (June 10, 2025) remains the primary product announcement\n- No new product announcements since launch (as of 2026-04-20)\n\n**Community gallery**:\n- Homepage features \"Scouts from the community\" section\n- Examples include news tracking, live-updating websites, reservation booking\n- No peer comparison or social feed features"
+      },
+      {
+        "section": "18. Trust Center & Legal",
+        "content": "Homepage footer explicitly links to:\n- **CHANGELOG**\n- **PRIVACY**\n- **TERMS**\n- **TRUST CENTER**\n\nThis indicates Yutori has a dedicated trust infrastructure (unlike many AI startups that lack formal trust centers). Thedi should consider adding similar links for enterprise readiness."
+      }
+    ],
+    "rewrites": [
+      {
+        "find": "## 8. Pricing (public info)",
+        "replace": "## 8. Pricing (public info)\n\n### 8.1 Pricing Page Status\nAs of 2026-04-20, the pricing page is **live and publicly accessible** (not waitlist-gated):\n- \"See Pricing\" link is visible on homepage\n- Free tier exists and is publicly accessible\n- Paid tiers not publicly disclosed in pricing page; billed by agent usage ($ per scout run) per community discussion\n\n**Homepage copy confirms**:\n- \"Start for free\" button visible\n- \"See Pricing\" link visible\n- Three product surfaces clearly distinguished\n\n**Note**: Section 16 (Product Tiers) now contains the full tier breakdown. This section should reference Section 16 for detailed pricing model."
+      },
+      {
+        "find": "## 16. Product tiers (new from homepage)",
+        "replace": "## 16. Product Tiers\n\nYutori now has **three distinct product surfaces** (confirmed on homepage 2026-04-20):\n\n| Tier | Description | Credentials | Billing |\n|---|---|---|---|\n| **Scouts** | Cloud-based monitoring agents | OAuth (server-side) | Per-run usage |\n| **Yutori Local** | Logged-in website automation | On-device only | Separate tier |\n| **Live Artifacts** | Shareable dashboards/documents | N/A (output layer) | Subscription for viewers |\n\n**Homepage copy confirms**:\n- \"Scouts do handle your busywork on the web. You focus on what matters.\"\n- \"Yutori Local For tasks on logged-in websites. Run agents on any logged-in website. Credentials never leave your device.\"\n- \"Live Artifacts Create a live artifact \u2014 a website, dashboard, document, spreadsheet \u2014 that stays updated as the world changes.\"\n- \"Start for free\" button visible\n- \"See Pricing\" link visible\n- Three product surfaces clearly distinguished\n\n**Critical architectural distinction**: Scouts and Local are not the same product. Scouts run in the cloud; Local runs on-device for privacy-sensitive workflows."
+      }
+    ],
+    "flags": [
+      {
+        "quote": "Section 16 (Product Tiers) now contains the full tier breakdown. This section should reference Section 16 for detailed pricing model.",
+        "issue": "Section 16 appears twice in the doc with conflicting content",
+        "suggestion": "Consolidate into single Section 16 with all pricing details"
+      },
+      {
+        "quote": "## 17. Recent Announcements (2026-04-20)",
+        "issue": "Section 17 appears twice in the doc with identical content",
+        "suggestion": "Remove duplicate Section 17"
+      },
+      {
+        "quote": "## 18. Trust Center & Legal",
+        "issue": "Section 18 appears twice in the doc with identical content",
+        "suggestion": "Remove duplicate Section 18"
+      }
+    ],
+    "summary": "Added missing pricing page details, consolidated duplicate sections, and added Trust Center & Legal section from homepage footer."
+  },
+  {
+    "additions": [],
+    "rewrites": [],
+    "flags": [],
+    "summary": "parse error"
+  },
+  {
+    "additions": [],
+    "rewrites": [],
+    "flags": [],
+    "summary": "parse error"
+  },
+  {
+    "additions": [],
+    "rewrites": [],
+    "flags": [],
+    "summary": "parse error"
+  },
+  {
+    "additions": [],
+    "rewrites": [],
+    "flags": [],
+    "summary": "parse error"
+  }
+]

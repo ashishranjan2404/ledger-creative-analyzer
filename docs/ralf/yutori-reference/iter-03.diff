@@ -1,0 +1,123 @@
+--- iter-02
++++ iter-03
+@@ -25,6 +25,14 @@
+ ---
+ 
+ ## 2. Scouts — the flagship
++
++### 2.8 Artifact Examples
++The homepage explicitly showcases three Live Artifact templates:
++- **HTML RL Papers 3D** — interactive visualization of reinforcement learning papers
++- **HTML US Airports Shutdown Map** — real-time map of airport closures
++- **HTML VCX Fund Dashboard** — live-updating fund performance tracker
++
++These are not just dashboards — they are **shareable HTML pages** that auto-update as the underlying Scout data changes. Viewers can subscribe to artifact updates without needing a Yutori account.
+ 
+ ### 2.6 Live Artifacts
+ Beyond monitoring, Scouts can create **Live Artifacts** — dynamic HTML dashboards, spreadsheets, or documents that auto-update as the web changes. Examples shown on yutori.com:
+@@ -81,6 +89,14 @@
+ ---
+ 
+ ## 3. Delivery channels
++
++### 3.1 Team Collaboration
++Yutori explicitly supports **team sharing** of Scout findings and artifacts:
++- Invite others to view Scout results
++- Subscribe to artifact updates (viewers don't need Yutori accounts)
++- Shared dashboards for team monitoring
++
++This is a **collaboration layer** that extends beyond individual use cases.
+ 
+ Yutori is **multi-channel** by design — not email-only:
+ 
+@@ -99,6 +115,14 @@
+ **Team sharing**: Users can invite others to view and subscribe to Scout findings and artifacts. This is a **collaboration layer** not mentioned in the original doc.
+ 
+ ## 4. Connectors (authenticated data sources)
++
++### 4.1 MCP Design Ecosystem
++The homepage explicitly lists **MCP Design Ecosystem** as a connector framework:
++- Connect Gmail, Slack, Notion, etc.
++- Agents monitor inbox for leads, surface important messages
++- Track updates in docs without manual checking
++
++This suggests Yutori is building an **open connector standard** (Model Context Protocol) rather than just a fixed list of integrations. The MCP framework is a **design ecosystem** — not just a technical protocol.
+ 
+ Yutori's differentiator vs. pure web-crawl tools — it can ingest **your stuff**:
+ 
+@@ -170,6 +194,12 @@
+ 
+ ## 8. Pricing (public info)
+ 
++### 8.1 Pricing Page Status
++As of 2026-04-20, the pricing page is **live and publicly accessible** (not waitlist-gated):
++- "See Pricing" link is visible on homepage
++- Free tier exists and is publicly accessible
++- Paid tiers not publicly disclosed in pricing page; billed by agent usage ($ per scout run) per community discussion
++
+ - **Free tier** exists and is publicly accessible (pricing page live as of 2026-04-20)
+ - **Paid tiers** not publicly disclosed in pricing page; billed by agent usage ($ per scout run) per community discussion
+ - **Enterprise**: not currently a focus per founders' interviews — consumer-first
+@@ -191,6 +221,11 @@
+ ---
+ 
+ ## 10. Known limitations (what Yutori ships today)
++
++### 10.1 Team Collaboration Limitations
++Per homepage and Fortune coverage:
++- **Team sharing exists but is limited** — you can invite others to view and subscribe to Scout findings and artifacts, but there's no mention of multi-user editing or role-based access
++- **No peer comparison** — scouts don't compare to peers' scouts (community gallery exists, but no social feed or benchmarking)
+ 
+ Per community feedback + Fortune/blog coverage:
+ 
+@@ -201,11 +236,28 @@
+ 5. **No structured feedback extraction** → persistent preferences. **However**, Yutori now supports **artifact subscriptions** where users can refine via follow-up prompts on shared artifacts.
+ 6. **English-first**; limited multilingual
+ 7. **No community / social features** — scouts don't compare to peers' scouts. **Clarification**: there's a gallery of public scout examples, but no peer comparison or social feed.
+-8. **No team collaboration on artifacts** — while you can share artifacts, there's no mention of multi-user editing or role-based access
++8. **Limited team collaboration** — you can invite others to view and subscribe to Scout findings and artifacts, but there's no mention of multi-user editing or role-based access
+ 9. **Yutori Local is separate from Scouts** — two distinct product tiers, not unified under one agent
+ 10. **No MCP marketplace** — while MCP is mentioned, no public connector marketplace exists yet
+ 
+ ## 11. Direct quotes (for positioning)
++
++### 11.1 Additional Founder Quotes
++From Fortune interview (Devi Parikh):
++> "The web is simultaneously one of humanity's greatest inventions—and really, really clunky."
++
++> "That's something that's harder for larger entities to think through from scratch, since they are incentivized to think about their existing products."
++
++> "We have the luxury to be able to just think from scratch."
++
++> "For example, if an AI agent is ordering food on DoorDash for you, it might need to show which restaurants it searched, what menu items it considered, and a few options you can quickly review and confirm. But if that same agent is monitoring the news and generating daily summaries, the format should be entirely different—perhaps organized like a briefing or timeline."
++
++> "Ultimately, a system should intelligently decide how to present information and how users can interact with the agent to refine or redirect the task."
++
++From Fortune interview (Devi Parikh on long-term vision):
++> "Yutori's long-term dream... is to build AI personal assistants—in the form of web agents—that can take daily digital chores off your plate without you lifting a finger, leaving you with time to tackle whatever brings you joy."
++
++> "The dream is digital agents that can do anything on the web. Scouts is the first product — we start with 'watch for me' because it's where AI agents provide immediate, daily value without being in the user's face."
+ 
+ From [blog.yutori.com on Scouts launch](https://blog.yutori.com/p/scouts):
+ 
+@@ -330,3 +382,20 @@
+ 7. [Yutori Home Page](https://yutori.com/) — captured 2026-04-20 (web context provided)
+ 8. [Yutori Scouts Page](https://yutori.com/scouts) — captured 2026-04-20 (web context provided)
+ 9. [Yutori Blog Substack](https://blog.yutori.com/) — captured 2026-04-20 (web context provided)
++
++## 17. Recent Announcements (2026-04-20)
++
++**Homepage updates captured 2026-04-20**:
++- **MCP Design Ecosystem** now explicitly listed as a connector framework
++- **Team sharing** feature added to homepage copy ("Share with your team. Invite others to view and subscribe to your Scout findings and artifacts.")
++- **Pricing page** is now live and publicly accessible ("See Pricing" link visible)
++- **Three product surfaces** clearly distinguished: Scouts, Yutori Local, Live Artifacts
++
++**Blog updates**:
++- Scouts launch post (June 10, 2025) remains the primary product announcement
++- No new product announcements since launch (as of 2026-04-20)
++
++**Community gallery**:
++- Homepage features "Scouts from the community" section
++- Examples include news tracking, live-updating websites, reservation booking
++- No peer comparison or social feed features

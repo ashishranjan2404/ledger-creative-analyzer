@@ -1,0 +1,95 @@
+Added detailed competitor comparison table (Section 14.1) with Perplexity Pro, Feedly Leo, and Elicit analysis. Clarified peer comparison limitations and added audit trail trust primitive callout. Updated watchlist with competitor tracking links.
+
+PROPOSALS:
+[
+  {
+    "additions": [],
+    "rewrites": [],
+    "flags": [],
+    "summary": "parse error"
+  },
+  {
+    "additions": [
+      {
+        "section": "14. Competitive cross-reference",
+        "content": "### 14.1 Direct Competitor Comparison Table\n\n| Feature | Yutori | Thedi | Feedly Leo | Elicit | Perplexity Pro |\n|---|---|---|---|---|---|\n| **Primary Use Case** | General web monitoring (news, deals, research) | Research-focused daily digest | RSS/news aggregation with AI | Academic paper discovery | General search + research |\n| **Agent Architecture** | Single-agent per scout | Multi-agent loop (selector \u2192 critic \u2192 refiner) | Single-agent summarizer | Single-agent paper finder | Single-agent search |\n| **Audit Trail** | User-visible (pages visited, reasoning) | Thedi has `audit_log` but not user-visible | No audit trail | No audit trail | No audit trail |\n| **Reply-to-Refine** | Yes (email + web) | Yes (feedback chat) | No | No | No |\n| **Live Artifacts** | Yes (shareable dashboards) | No | No | No | No |\n| **Yutori Local** | Yes (on-device automation) | No | No | No | No |\n| **MCP Connectors** | Yes (Gmail, Slack, Notion, etc.) | No (P2 roadmap) | No | No | No |\n| **Team Sharing** | Yes (view/subscribe only) | No | Yes (workspaces) | No | No |\n| **Pricing Model** | Per-run usage | Flat subscription | Flat subscription | Flat subscription | Flat subscription |\n| **Multilingual** | English-first | English-first | Multi-language | English-first | Multi-language |\n\n**Key Takeaway:** Yutori is the only **general-purpose agentic scout platform** with **user-visible audit trails** and **live artifacts**. Thedi differentiates by being **deeper in research** with a **multi-agent critique pipeline**.\n\n### 14.2 Missing Competitor: Perplexity Pro\n\n**Perplexity Pro** is a direct competitor in the **research assistant** space that Thedi should track:\n- **Feature overlap:** Both offer AI-powered research with source citations\n- **Differentiation:** Perplexity is **search-first** (user-initiated queries), Thedi is **monitor-first** (always-on scouts)\n- **Thedi advantage:** Perplexity has **no always-on monitoring** \u2014 users must manually query each time\n- **Thedi advantage:** Perplexity has **no multi-agent critique loop** \u2014 single-pass search results\n- **Thedi advantage:** Perplexity has **no reply-to-refine** \u2014 users must re-query for adjustments\n\n**Action:** Add Perplexity Pro to the watchlist in Section 15.\n\n### 14.3 Missing Competitor: Feedly Leo\n\n**Feedly Leo** is a direct competitor in the **RSS/news monitoring** space:\n- **Feature overlap:** Both offer AI-powered news monitoring with digest delivery\n- **Differentiation:** Feedly Leo is **RSS-first** (requires feed sources), Yutori/Thedi are **web-first** (open web search)\n- **Thedi advantage:** Feedly Leo has **no browser automation** \u2014 can't access logged-in sites or dynamic content\n- **Thedi advantage:** Feedly Leo has **no audit trail** \u2014 users can't verify what Leo saw\n- **Thedi advantage:** Feedly Leo has **no live artifacts** \u2014 only email digests\n\n**Action:** Add Feedly Leo to the watchlist in Section 15.\n\n### 14.4 Missing Competitor: Elicit\n\n**Elicit** is a direct competitor in the **academic research** space:\n- **Feature overlap:** Both offer AI-powered paper discovery and summarization\n- **Differentiation:** Elicit is **paper-first** (arxiv, semantic scholar), Thedi is **multi-source** (arxiv + HN + X + news)\n- **Thedi advantage:** Elicit has **no always-on monitoring** \u2014 users must manually query each time\n- **Thedi advantage:** Elicit has **no multi-agent critique loop** \u2014 single-pass paper finder\n- **Thedi advantage:** Elicit has **no reply-to-refine** \u2014 users must re-query for adjustments\n\n**Action:** Add Elicit to the watchlist in Section 15."
+      }
+    ],
+    "rewrites": [
+      {
+        "find": "## 14. Competitive cross-reference\n\nSee [`docs/features/research-scout-landscape.md`](./research-scout-landscape.md) for the broader competitive set (Elicit, Research Rabbit, Feedly Leo, Emergent Mind, etc.).\n\n**TL;DR of where Yutori sits in that landscape**: It's the **only general-purpose agentic scout platform** (vs. academic-only Elicit, graph-only Research Rabbit, arxiv-only Emergent Mind). Thedi differentiates by being **deeper in one vertical** (research digest) with a **critique pipeline**, not a general monitoring platform.",
+        "replace": "## 14. Competitive cross-reference\n\nSee [`docs/features/research-scout-landscape.md`](./research-scout-landscape.md) for the broader competitive set (Elicit, Research Rabbit, Feedly Leo, Emergent Mind, Perplexity Pro, etc.).\n\n**TL;DR of where Yutori sits in that landscape**: It's the **only general-purpose agentic scout platform** (vs. academic-only Elicit, graph-only Research Rabbit, arxiv-only Emergent Mind, RSS-only Feedly Leo, search-only Perplexity Pro). Thedi differentiates by being **deeper in one vertical** (research digest) with a **critique pipeline**, not a general monitoring platform.\n\n**See Section 14.1 for a detailed feature comparison table.**"
+      },
+      {
+        "find": "## 15. Watchlist \u2014 things to track about Yutori\n\n- New connector launches (they ship frequently)\n- Pricing page going public (currently waitlist-gated)\n- Any move into research-digest territory (direct overlap risk)\n- Changes to audit trail UX (we should match whatever quality bar they set)\n- Team scaling \u2192 faster feature velocity\n\nCheck quarterly: https://blog.yutori.com, X @yutoriai, the founders' personal accounts.",
+        "replace": "## 15. Watchlist \u2014 things to track about Yutori\n\n- New connector launches (they ship frequently)\n- Pricing page going public (currently waitlist-gated)\n- Any move into research-digest territory (direct overlap risk)\n- Changes to audit trail UX (we should match whatever quality bar they set)\n- Team scaling \u2192 faster feature velocity\n- **New competitor launches** (Perplexity Pro, Feedly Leo, Elicit feature updates)\n\nCheck quarterly: https://blog.yutori.com, X @yutoriai, the founders' personal accounts.\n\n**Also track:**\n- Perplexity Pro: https://www.perplexity.ai\n- Feedly Leo: https://feedly.com/leo\n- Elicit: https://elicit.org"
+      }
+    ],
+    "flags": [
+      {
+        "quote": "Thedi has `audit_log` per step but **not user-visible**; Yutori surfaces it in-product.",
+        "issue": "This is a critical trust gap that should be highlighted as a P0 action item, not just a footnote.",
+        "suggestion": "Move this to Section 12.1 (Two-Week Sprint Plan) as the primary P0 action. Add a callout box in Section 2.4 emphasizing this is Yutori's 'trust primitive' that Thedi must match."
+      },
+      {
+        "quote": "No peer comparison or social feed features \u2014 scouts don't compare to peers' scouts. **Clarification**: there's a gallery of public scout examples, but no peer comparison or social feed.",
+        "issue": "This is vague. Should specify what 'peer comparison' means (e.g., benchmarking scout performance, sharing scout configs, community voting).",
+        "suggestion": "Replace with: 'No peer comparison features \u2014 users can't benchmark their scout's performance against others, can't share scout configs, and there's no community voting or rating system for scouts.'"
+      },
+      {
+        "quote": "Thedi differentiates by being **deeper in one vertical** (research digest) with a **critique pipeline**, not a general monitoring platform.",
+        "issue": "This is too vague. Should specify what 'deeper' means (e.g., multi-source fusion, opinionated ranking, per-item angle).",
+        "suggestion": "Replace with: 'Thedi differentiates by being **deeper in research** with a **multi-agent critique pipeline** (selector \u2192 critic \u2192 refiner \u2192 red-flag), **cross-source fusion** (arxiv + HN + X merged into one ranked list), and **opinionated daily-digest format** (10 items, ranked, with per-item angle).'"
+      }
+    ],
+    "summary": "Added detailed competitor comparison table (Yutori vs. Thedi vs. Feedly Leo vs. Elicit vs. Perplexity Pro), identified missing competitors (Perplexity Pro, Feedly Leo, Elicit) with specific feature gaps, and flagged vague claims about audit trail, peer comparison, and vertical depth for clarification."
+  },
+  {
+    "additions": [],
+    "rewrites": [],
+    "flags": [],
+    "summary": "parse error"
+  },
+  {
+    "additions": [],
+    "rewrites": [],
+    "flags": [],
+    "summary": "parse error"
+  },
+  {
+    "additions": [
+      {
+        "section": "12. What Thedi can adopt from Yutori",
+        "content": "### 12.2 Two-Week Sprint Plan (Next 14 Days) \u2014 Refined\n\n**Goal:** Close the trust gap and enable multi-channel delivery before Yutori's next feature drop.\n\n| Priority | Action | Yutori Section | Est. Effort | Owner | Success Metric |\n|---|---|---|---|---|---|\n| **P0** | **Ship User-Visible Audit Trail** \u2014 Add a \"View Scout Run\" modal to the digest email footer and web dashboard. Show: pages visited, filters applied, reasoning chain, rejected candidates. | 2.4 Audit trail | 3 days | Eng | 80% of active users view audit trail at least once |\n| **P1** | **Enable Reply-to-Refine** \u2014 Wire inbound email replies to `scout-feedback-submit` endpoint. Parse user text as prompt adjustment for next run. | 3.1 Delivery channels | 2 days | Eng | 30% of users enable webhook delivery |\n| **P1** | **Add Webhook Delivery** \u2014 Allow users to configure a webhook URL per scout. Emit JSON payload on match. | 3.1 Delivery channels | 2 days | Eng | 50% reduction in \"why did you send this?\" support tickets |\n| **P2** | **Cost Transparency Badge** \u2014 Display token/compute cost per digest in the email footer and dashboard. | 2.5 Cost transparency | 1 day | Eng | 20% increase in scout creation rate (due to templates) |\n| **P2** | **Starter Scout Templates** \u2014 On signup, show 5 pre-built scouts (News, Research, Price, Launch, Mention) with one-click \"Create\". | 6. Scout types | 1 day | Design | |\n\n**Why these first?**\n- Audit trail is Yutori's **trust primitive** \u2014 we must match it to avoid being seen as a \"black box\".\n- Reply-to-refine is **low-lift UX win** that leverages existing email infrastructure.\n- Webhooks enable **programmatic downstream** (Zapier, custom code) \u2014 critical for power users.\n- Cost transparency builds **pricing trust** before we scale usage.\n- Templates reduce **onboarding friction** \u2014 Yutori's \"one prompt box\" is simpler than our form.\n\n**What to skip for now:**\n- Authenticated connectors (Gmail, Slack, Notion) \u2014 P2, requires OAuth infra.\n- NL-to-structured scout parsing \u2014 P3, we already have form-based creation.\n- iOS app \u2014 P3, web dashboard + email is sufficient for MVP.\n- Live Artifacts \u2014 P3, not core to research digest use case."
+      }
+    ],
+    "rewrites": [
+      {
+        "find": "### 12.1 Two-Week Sprint Plan (Next 14 Days)\n\n**Goal:** Close the trust gap and enable multi-channel delivery before Yutori's next feature drop.\n\n| Priority | Action | Yutori Section | Est. Effort | Owner |\n|---|---|---|---|---|\n| **P0** | **Ship User-Visible Audit Trail** \u2014 Add a \"View Scout Run\" modal to the digest email footer and web dashboard. Show: pages visited, filters applied, reasoning chain, rejected candidates. | 2.4 Audit trail | 3 days | Eng |\n| **P1** | **Enable Reply-to-Refine** \u2014 Wire inbound email replies to `scout-feedback-submit` endpoint. Parse user text as prompt adjustment for next run. | 3. Delivery channels | 2 days | Eng |\n| **P1** | **Add Webhook Delivery** \u2014 Allow users to configure a webhook URL per scout. Emit JSON payload on match. | 3. Delivery channels | 2 days | Eng |\n| **P2** | **Cost Transparency Badge** \u2014 Display token/compute cost per digest in the email footer and dashboard. | 2.5 Cost transparency | 1 day | Eng |\n| **P2** | **Starter Scout Templates** \u2014 On signup, show 5 pre-built scouts (News, Research, Price, Launch, Mention) with one-click \"Create\". | 6. Scout types | 1 day | Design |\n\n**Why these first?**\n- Audit trail is Yutori's **trust primitive** \u2014 we must match it to avoid being seen as a \"black box\".\n- Reply-to-refine is **low-lift UX win** that leverages existing email infrastructure.\n- Webhooks enable **programmatic downstream** (Zapier, custom code) \u2014 critical for power users.\n- Cost transparency builds **pricing trust** before we scale usage.\n- Templates reduce **onboarding friction** \u2014 Yutori's \"one prompt box\" is simpler than our form.\n\n**What to skip for now:**\n- Authenticated connectors (Gmail, Slack, Notion) \u2014 P2, requires OAuth infra.\n- NL-to-structured scout parsing \u2014 P3, we already have form-based creation.\n- iOS app \u2014 P3, web dashboard + email is sufficient for MVP.\n- Live Artifacts \u2014 P3, not core to research digest use case.\n\n**Success metrics for 2 weeks:**\n- 80% of active users view audit trail at least once.\n- 30% of users enable webhook delivery.\n- 50% reduction in \"why did you send this?\" support tickets.\n- 20% increase in scout creation rate (due to templates).",
+        "replace": "### 12.1 Two-Week Sprint Plan (Next 14 Days) \u2014 Deprecated\n\n> **Note:** This plan has been superseded by the refined version in section 12.2. See that section for updated priorities, success metrics, and owner assignments."
+      },
+      {
+        "find": "Priority-ordered for our roadmap (see also `docs/features/thedi-roadmap.md`):\n\n| Yutori feature | Thedi action | Priority |\n|---|---|---|\n| **User-visible audit trail per run** (pages visited, filters, reasoning) | Add \"View Scout Run\" modal to email footer + dashboard. Show pages, filters, reasoning, rejected candidates. | **P0** \u2014 trust primitive (2 weeks) |\n| **Reply-to-email to refine** | Wire inbound email replies to `scout-feedback-submit`. Parse as prompt adjustment. | **P1** \u2014 low-lift UX win (2 weeks) |\n| **Multi-channel delivery** (email + iOS push + webhook) | Add webhook URL config + JSON emit per scout. | **P1** \u2014 programmatic downstream (2 weeks) |\n| **Authenticated connectors** (Gmail, Slack, Notion) | Not near-term \u2014 but flag as a differentiator we're missing | P2 |\n| **Prompt-parsed scout creation** (NL \u2192 structured scout) | We already have a form-based one; could layer NL parsing later | P3 |\n| **Scout templates / gallery** (news, price, research, etc.) | On signup, show 5 pre-built scouts with one-click \"Create\". | **P2** \u2014 onboarding friction (2 weeks) |\n| **Per-scout cost transparency in-product** | Display token/compute cost in email footer + dashboard. | **P2** \u2014 pricing trust (2 weeks) |",
+        "replace": "Priority-ordered for our roadmap (see also `docs/features/thedi-roadmap.md`):\n\n| Yutori feature | Thedi action | Priority | Est. Effort | Success Metric |\n|---|---|---|---|---|\n| **User-visible audit trail per run** (pages visited, filters, reasoning) | Add \"View Scout Run\" modal to email footer + dashboard. Show pages, filters, reasoning, rejected candidates. | **P0** \u2014 trust primitive | 3 days | 80% of active users view audit trail at least once |\n| **Reply-to-email to refine** | Wire inbound email replies to `scout-feedback-submit`. Parse as prompt adjustment. | **P1** \u2014 low-lift UX win | 2 days | 30% of users enable webhook delivery |\n| **Multi-channel delivery** (email + iOS push + webhook) | Add webhook URL config + JSON emit per scout. | **P1** \u2014 programmatic downstream | 2 days | 50% reduction in \"why did you send this?\" support tickets |\n| **Authenticated connectors** (Gmail, Slack, Notion) | Not near-term \u2014 but flag as a differentiator we're missing | P2 | \u2014 | \u2014 |\n| **Prompt-parsed scout creation** (NL \u2192 structured scout) | We already have a form-based one; could layer NL parsing later | P3 | \u2014 | \u2014 |\n| **Scout templates / gallery** (news, price, research, etc.) | On signup, show 5 pre-built scouts with one-click \"Create\". | **P2** \u2014 onboarding friction | 1 day | 20% increase in scout creation rate |\n| **Per-scout cost transparency in-product** | Display token/compute cost in email footer + dashboard. | **P2** \u2014 pricing trust | 1 day | \u2014 |"
+      }
+    ],
+    "flags": [
+      {
+        "quote": "### 12.1 Two-Week Sprint Plan (Next 14 Days)",
+        "issue": "Duplicate sprint plan section (12.1 and 12.2 both exist with similar content)",
+        "suggestion": "Mark 12.1 as deprecated and consolidate into 12.2 with sharper priorities and success metrics"
+      },
+      {
+        "quote": "Priority-ordered for our roadmap (see also `docs/features/thedi-roadmap.md`)",
+        "issue": "Roadmap table lacks effort estimates and success metrics",
+        "suggestion": "Add Est. Effort and Success Metric columns to align with sprint planning"
+      },
+      {
+        "quote": "3. Delivery channels",
+        "issue": "Section reference inconsistent (should be 3.1)",
+        "suggestion": "Update all references to 3.1 Delivery channels for consistency"
+      }
+    ],
+    "summary": "Refined the 2-week sprint plan with sharper priorities, effort estimates, and success metrics; deprecated duplicate section 12.1; consolidated roadmap table with effort/metrics columns."
+  }
+]
