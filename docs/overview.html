@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thedi — 48-hour build walkthrough</title>
+  <style>
+    :root {
+      --bg: #fefefe;
+      --surface: #fafaf9;
+      --surface-2: #f5f5f4;
+      --ink: #1c1917;
+      --mute: #78716c;
+      --rule: #e7e5e4;
+      --accent: #f59e0b;
+      --accent-bg: #fef3c7;
+      --ok: #16a34a;
+      --info: #2563eb;
+      --warn: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.6;
+    }
+    a { color: var(--info); }
+    .wrap { max-width: 820px; margin: 0 auto; padding: 48px 28px 120px; }
+
+    header.hero {
+      padding: 40px 0 48px;
+      border-bottom: 1px solid var(--rule);
+      margin-bottom: 48px;
+    }
+    .logo { display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px; }
+    .logo .name { font-size: 36px; font-weight: 600; color: var(--accent); font-family: Georgia, serif; font-style: italic; }
+    .logo .tamil { font-size: 16px; color: var(--mute); font-family: Georgia, serif; }
+    .logo .tag { margin-left: auto; font-size: 12px; color: var(--mute); text-transform: uppercase; letter-spacing: 1.5px; }
+    h1.pitch { font-size: 32px; font-weight: 700; margin: 0 0 16px; line-height: 1.2; }
+    .sub { font-size: 18px; color: var(--mute); max-width: 640px; }
+
+    h2 { font-size: 22px; margin: 56px 0 12px; }
+    h3 { font-size: 16px; margin: 28px 0 8px; color: var(--ink); }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 24px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 20px;
+      background: var(--surface-2); border: 1px solid var(--rule);
+      font-size: 12px; color: var(--ink); font-weight: 500;
+    }
+    .chip.accent { background: var(--accent-bg); border-color: #fde68a; color: #92400e; }
+    .chip.ok { background: #dcfce7; border-color: #bbf7d0; color: #15803d; }
+
+    .links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+    .link-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 16px; border-radius: 6px;
+      background: var(--ink); color: white; text-decoration: none;
+      font-size: 14px; font-weight: 500;
+    }
+    .link-btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--rule); }
+    .link-btn:hover { opacity: 0.85; }
+
+    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 24px 0; }
+    .metric {
+      padding: 16px; background: var(--surface); border-radius: 8px; border-left: 3px solid var(--accent);
+    }
+    .metric .num { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .metric .label { font-size: 11px; color: var(--mute); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+    .pipeline {
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 12px; line-height: 1.7;
+      padding: 20px; background: var(--surface); border-radius: 8px;
+      overflow-x: auto; white-space: pre;
+    }
+
+    .stage-list { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
+    .stage {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 14px 16px; background: var(--surface); border-radius: 6px;
+      border-left: 3px solid var(--accent);
+    }
+    .stage .step-num {
+      flex: 0 0 28px; width: 28px; height: 28px; border-radius: 50%;
+      background: var(--ink); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600;
+    }
+    .stage .step-body strong { display: block; margin-bottom: 2px; }
+    .stage .step-body span { font-size: 13px; color: var(--mute); }
+
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--rule); font-size: 14px; vertical-align: top; }
+    th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mute); font-weight: 500; background: var(--surface); }
+    td.num { font-variant-numeric: tabular-nums; text-align: right; color: var(--mute); }
+    td code, code.inline { font-family: "SF Mono", Menlo, monospace; font-size: 12px; background: var(--surface-2); padding: 2px 6px; border-radius: 3px; }
+
+    .round-list .round {
+      display: grid; grid-template-columns: 60px 1fr; gap: 16px;
+      padding: 12px 0; border-bottom: 1px solid var(--rule);
+    }
+    .round .iter { font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
+    .round .what { font-size: 14px; }
+
+    .callout {
+      margin: 20px 0; padding: 18px 20px;
+      background: var(--accent-bg); border: 1px solid #fde68a; border-radius: 8px;
+      font-size: 14px;
+    }
+    .callout .who { font-weight: 600; font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; color: #92400e; margin-bottom: 6px; }
+    .callout.quote { font-style: italic; }
+
+    ul.stack { list-style: none; padding: 0; }
+    ul.stack li {
+      padding: 10px 12px; background: var(--surface); border-radius: 6px;
+      margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;
+      font-size: 14px;
+    }
+    ul.stack li strong { color: var(--ink); }
+    ul.stack li span.role { color: var(--mute); font-size: 12px; }
+
+    code.block {
+      display: block; padding: 16px; background: var(--ink); color: #f5f5f4;
+      border-radius: 6px; font-family: "SF Mono", Menlo, monospace;
+      font-size: 12px; line-height: 1.6; overflow-x: auto;
+      white-space: pre; margin: 12px 0;
+    }
+
+    footer {
+      margin-top: 80px; padding-top: 24px; border-top: 1px solid var(--rule);
+      font-size: 12px; color: var(--mute); text-align: center;
+    }
+
+    hr.spacer { border: none; border-top: 1px solid var(--rule); margin: 40px 0; }
+
+    .emoji { font-size: 18px; vertical-align: -2px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="logo">
+    <span class="name">Thedi</span>
+    <span class="tamil">தேடி — seek</span>
+    <span class="tag">48-hour build</span>
+  </div>
+  <h1 class="pitch">A daily research scout with a multi-agent critique pipeline — built on Butterbase, IonRouter, and Resend in one weekend.</h1>
+  <div class="sub">
+    Thedi reads arxiv, Hacker News, and X every morning, ranks items against your interests via a
+    selector → critic → refiner loop, and delivers a personalized 10-item digest to your inbox at 7 AM local.
+    Click <em>"Tell Thedi what missed"</em> on any email → tomorrow's critic sees your feedback and adjusts.
+  </div>
+  <div class="links">
+    <a class="link-btn" href="https://thedi.butterbase.dev" target="_blank">Live app →</a>
+    <a class="link-btn ghost" href="https://github.com/ashishranjan2404/ledger-creative-analyzer/tree/feat/thedi-mvp" target="_blank">GitHub repo →</a>
+    <a class="link-btn ghost" href="./features/yutori-reference.md">Yutori reference doc</a>
+  </div>
+</header>
+
+<section>
+  <h2>📊 By the numbers</h2>
+  <div class="metrics">
+    <div class="metric"><div class="num">13s</div><div class="label">End-to-end digest time</div></div>
+    <div class="metric"><div class="num">&lt;$0.01</div><div class="label">Cost per digest (Qwen 3.5)</div></div>
+    <div class="metric"><div class="num">6</div><div class="label">Postgres tables</div></div>
+    <div class="metric"><div class="num">5</div><div class="label">Deployed functions</div></div>
+    <div class="metric"><div class="num">3</div><div class="label">RALF rounds on the design</div></div>
+    <div class="metric"><div class="num">27</div><div class="label">RALF proposals accepted</div></div>
+    <div class="metric"><div class="num">16</div><div class="label">Refinements on Yutori doc</div></div>
+    <div class="metric"><div class="num">0</div><div class="label">Secrets in git</div></div>
+  </div>
+</section>
+
+<hr class="spacer" />
+
+<section>
+  <h2>🌅 The product in one paragraph</h2>
+  <p>
+    You sign in with Google, tell Thedi your research interests (keywords + sources), and every morning at 7 AM local
+    you get a personalized email with 10 ranked items from arxiv + HN + X. Each item has a one-sentence
+    <em>"why it matters for you"</em> angle. Click <em>"Tell Thedi what missed"</em> in any email → land on a chat page
+    with the scout pre-seeded with two of today's items; type free-text critique; Qwen extracts structured
+    preferences; tomorrow's critic reads them and drops the items you didn't want.
+  </p>
+  <p>
+    The rank diff is visible on a <em>replay page</em> — you can see exactly which papers the selector picked
+    initially, what the critic said about them, and which the refiner swapped in. It's not a black box.
+  </p>
+</section>
+
+<section>
+  <h2>🔧 The polishing loop (MAKER-lite)</h2>
+  <p>One Butterbase function — <code class="inline">scout-polish-now</code> — runs the whole chain synchronously in ~13 seconds:</p>
+
+  <div class="pipeline">arxiv + HN (keyword-filtered)
+       │
+       ▼
+   INGEST    25–50 raw items
+       │
+       ▼
+   SELECT    Qwen picks top 10 + per-item angle
+       │
+       ▼
+   CRITIC    Qwen reviews: "is this serving the user?"
+       │
+       ├── (accepted) ────────────┐
+       │                          │
+       └── (rejected)             │
+            ▼                     │
+       REFINE    re-rank          │
+            │                     │
+            └─────────┬───────────┘
+                      ▼
+                 RED-FLAG    URL allowlist + title sanity
+                      │
+                      ▼
+                 FINALIZE    write findings + digest row
+                      │
+                      ▼
+                 DELIVER     Resend email to user
+                      │
+                      ▼
+            user clicks "Tell Thedi what missed"
+                      │
+                      ▼
+         extracted_prefs → tomorrow's CRITIC</div>
+
+  <p>Every step writes to <code class="inline">audit_log</code> with tokens, ms, and status — so any digest is fully debuggable.</p>
+</section>
+
+<hr class="spacer" />
+
+<section>
+  <h2>🧱 The stack — everything on one platform</h2>
+  <ul class="stack">
+    <li><strong>Butterbase</strong> <span class="role">Postgres + serverless functions + auth + static frontend hosting</span></li>
+    <li><strong>IonRouter (Qwen 3.5 122B)</strong> <span class="role">Selector · Critic · Refiner · Feedback extractor</span></li>
+    <li><strong>Resend</strong> <span class="role">Email delivery, DKIM+SPF+MX verified on platformy.org</span></li>
+    <li><strong>Google OAuth</strong> <span class="role">User sign-in, via Butterbase's built-in provider</span></li>
+    <li><strong>arxiv API + HN Algolia</strong> <span class="role">Source ingestion (X via RSS — roadmapped)</span></li>
+    <li><strong>Vanilla HTML + JS SPA</strong> <span class="role">No build step; hash routing; &lt;10KB total</span></li>
+  </ul>
+</section>
+
+<section>
+  <h2>📦 What got built</h2>
+
+  <h3>Backend — 5 HTTP functions on Butterbase</h3>
+  <table>
+    <thead><tr><th>Function</th><th>Purpose</th><th>Auth</th></tr></thead>
+    <tbody>
+      <tr><td><code>scout-polish-now</code></td><td>Synchronous end-to-end digest pipeline</td><td>Admin token (body)</td></tr>
+      <tr><td><code>scout-findings</code></td><td>Read digest + findings by share_token</td><td>Token-gated public</td></tr>
+      <tr><td><code>scout-feedback-submit</code></td><td>Save user feedback + extract prefs via Qwen</td><td>Token-gated</td></tr>
+      <tr><td><code>scout-feedback-preview</code></td><td>Live re-rank today's findings (no writes)</td><td>Token-gated</td></tr>
+      <tr><td><code>scout-dispatch-hourly</code></td><td>Hourly cron: materialize per-user digest jobs</td><td>Cron (service role)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Data model — 6 tables</h3>
+  <table>
+    <thead><tr><th>Table</th><th>Purpose</th><th>RLS</th></tr></thead>
+    <tbody>
+      <tr><td><code>users</code></td><td>email, google_sub, timezone, delivery_hour_local</td><td>public-read-own</td></tr>
+      <tr><td><code>interests</code></td><td>user_id, keywords[], sources[], active</td><td>user-isolation</td></tr>
+      <tr><td><code>digests</code></td><td>per-run state: status, share_token, critique_text, critic_accepted</td><td>user-isolation</td></tr>
+      <tr><td><code>findings</code></td><td>rank, source, title, url, score, angle, initial_rank (for replay)</td><td>via digest token</td></tr>
+      <tr><td><code>feedback</code></td><td>user message + extracted_prefs (jsonb)</td><td>user-isolation</td></tr>
+      <tr><td><code>audit_log</code></td><td>per-step tokens + ms + ok/note for debugging</td><td>service-only</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Frontend — vanilla SPA, hash-routed</h3>
+  <ul class="stack">
+    <li><code>#/</code> <span class="role">Landing + Google sign-in</span></li>
+    <li><code>#/f/&lt;token&gt;</code> <span class="role">Findings page — 10 ranked items with per-item angle</span></li>
+    <li><code>#/chat/&lt;token&gt;</code> <span class="role">Feedback chat — pre-seeded with two of today's items</span></li>
+    <li><code>#/r/&lt;token&gt;</code> <span class="role">Replay page — initial vs final rank diff + critique text</span></li>
+  </ul>
+</section>
+
+<hr class="spacer" />
+
+<section>
+  <h2>🎭 The meta-process — RALF on the design itself</h2>
+  <p>
+    Before writing a line of code, we ran <strong>3 rounds of RALF</strong>
+    (Refine-And-Loop-Forward) on the Thedi design doc. Each round: 3 parallel
+    Claude critics with different lenses (Product/UX, Engineering,
+    Delivery/Ops → Security, Cost, Edge Cases → YAGNI, Demo Narrative,
+    Butterbase Feasibility) proposed changes; a judge synthesized.
+    <strong>27 proposals accepted across 9 lenses.</strong>
+  </p>
+
+  <h3>What each RALF round caught</h3>
+  <div class="round-list">
+    <div class="round"><div class="iter">Round 1</div><div class="what">Idempotency (UNIQUE on user_id+run_date), failure ceilings, email subject templated from top finding, feedback chat pre-seeded, 30-second landing page, URL allowlist for red-flag</div></div>
+    <div class="round"><div class="iter">Round 2</div><div class="what">Token-gated share URLs, audit_log PII scrubbing + 14-day TTL, admin token model, critic token budget (–60% spend), golden-set eval, temperature=0, DST backfill, Unicode keyword quoting, welcome digest on first signup</div></div>
+    <div class="round"><div class="iter">Round 3</div><div class="what">(load-bearing) → 1-pass critic (Sonnet → Haiku), 9→6 tables, SPA instead of per-digest HTML (Butterbase is zip→Pages), step-function state machine (Butterbase caps functions at 5 min), pre-run at T-10 for demo, replay page with critic stream, live re-rank preview button</div></div>
+  </div>
+
+  <p>Artifacts: <code class="inline">docs/superpowers/specs/2026-04-19-thedi-design.md</code> (v3 final) +
+  <code class="inline">docs/superpowers/ralf/round-{1,2,3}-changelog.md</code>.</p>
+</section>
+
+<hr class="spacer" />
+
+<section>
+  <h2>🔬 RALF, round two — iterating on the Yutori reference doc</h2>
+  <p>
+    After the product was live, we turned the same loop on <strong>our understanding of Yutori</strong>
+    (the direct product inspiration). But this time we ran it via
+    <strong>IonRouter Qwen</strong> instead of Claude subagents — same RALF pattern, ~100× cheaper.
+  </p>
+
+  <div class="stage-list">
+    <div class="stage"><div class="step-num">1</div><div class="step-body"><strong>Pre-fetch URLs</strong><span><code>yutori.com</code>, <code>yutori.com/scouts</code>, <code>blog.yutori.com</code>, Fortune launch article — fetched once at script start, ~10K chars of live context</span></div></div>
+    <div class="stage"><div class="step-num">2</div><div class="step-body"><strong>Per iteration: 5 parallel Qwen critics</strong><span>Each gets a distinct lens: feature expander · competitive analyst · fact-checker · editorial · Thedi-roadmap translator</span></div></div>
+    <div class="stage"><div class="step-num">3</div><div class="step-body"><strong>Judge emits edit ops</strong><span>Instead of rewriting the full doc (which hit 400 errors), judge returns JSON like <code>{"op": "append", "content": "..."}</code>; Python applies the ops</span></div></div>
+    <div class="stage"><div class="step-num">4</div><div class="step-body"><strong>Per-iter diffs persisted</strong><span>Every round's changes saved to <code>docs/ralf/yutori-reference/iter-NN.diff</code> for full audit</span></div></div>
+    <div class="stage"><div class="step-num">5</div><div class="step-body"><strong>Stop on 2 consecutive no-ops</strong><span>Converged at iter 18 after Qwen hit its 16K context ceiling — script detected diminishing returns</span></div></div>
+  </div>
+
+  <h3>What the RALF-on-Yutori loop discovered</h3>
+  <table>
+    <thead><tr><th>Iter</th><th>What landed</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>Live Artifacts, Yutori Local, MCP Design Ecosystem, team sharing layer</td></tr>
+      <tr><td class="num">5</td><td>2-week sprint plan with P0/P1/P2 priorities tied to doc sections</td></tr>
+      <tr><td class="num">10</td><td>Direct competitor comparison table (Perplexity, Feedly, Elicit)</td></tr>
+      <tr><td class="num">11–12</td><td>Pricing details, product tier breakdown, homepage feature mentions</td></tr>
+      <tr><td class="num">13</td><td>Adjacent competitors (Zapier Interfaces, Bardeen, Clay)</td></tr>
+      <tr><td class="num">14–16</td><td>Trust Center + Legal surface, section consolidations, sharper Thedi roadmap</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Dedup pass</h3>
+  <p>
+    The judge's append-heavy output stacked duplicate sections (4× "Recent Announcements",
+    3× "Trust Center", 3× "Product Tiers"). A one-shot <code class="inline">scripts/ralf_dedup.py</code>
+    sent each duplicate-group to Qwen with "merge into one non-duplicate section" — <strong>43k → 37.5k chars, no content loss</strong>.
+  </p>
+
+  <div class="metrics">
+    <div class="metric"><div class="num">16</div><div class="label">Productive iterations</div></div>
+    <div class="metric"><div class="num">~$0.25</div><div class="label">Total Qwen spend</div></div>
+    <div class="metric"><div class="num">250→605</div><div class="label">Lines in final doc</div></div>
+    <div class="metric"><div class="num">~4s</div><div class="label">Per IonRouter call</div></div>
+  </div>
+</section>
+
+<hr class="spacer" />
+
+<section>
+  <h2>🧠 What Thedi does that nobody else does</h2>
+  <p>From the research — see <a href="./features/research-scout-landscape.md"><code class="inline">docs/features/research-scout-landscape.md</code></a>:</p>
+  <ol>
+    <li><strong>Multi-agent selector → critic → refiner chain on a daily cadence.</strong> Elicit runs a pipeline but per-query; Smol.AI runs agents but non-personalized; Perplexity/OpenAI Deep Research are one-shot. No competitor ships a daily-push product with an adversarial critic + red-flag reviewer per item.</li>
+    <li><strong>Structured "Not useful? Tell me why" feedback that feeds the next day's critic prompt.</strong> Semantic Scholar has "not relevant" but it only reorders rankings — it doesn't change tomorrow's <em>selector prompt</em>. Free-text reason extraction closing the loop is genuinely novel in this cohort.</li>
+    <li><strong>arXiv + HN + X fused and critiqued together into a single 10-item digest at 7 AM local.</strong> Emergent Mind uses all three but only for ranking arxiv; Smol.AI digests Discord/Reddit/X but not arxiv first-class; no one else fuses all three with per-item critic scoring + personalization.</li>
+    <li><strong>Rank-diff visible in the product</strong> (replay page shows initial → final movement). Unique — no competitor exposes their agent's reasoning this way.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>💬 The moment that sold it</h2>
+  <div class="callout quote">
+    <div class="who">Thedi's critic to Ashish's digest</div>
+    "Items #8, #9, and #10 are too tangential to the user's core focus on agentic AI for creative/video applications;
+    #8 discusses RL sim2real transfer, #9 covers LLM problem-solving generalization, and #10 focuses on event-camera
+    hardware, none of which directly support building agentic tools for video generation. Replace these with papers
+    on multi-agent collaboration frameworks, LLM-based video editing agents, or benchmarks for creative task
+    evaluation in agentic systems."
+  </div>
+  <p>This is the <strong>visible reasoning</strong> that sets Thedi apart from "one-size-fits-all" AI digest newsletters. The critic <em>argues with itself</em>, and you get to watch.</p>
+</section>
+
+<hr class="spacer" />
+
+<section>
+  <h2>🛤️ What's next</h2>
+  <p>From <a href="./features/thedi-features-roadmap.md"><code class="inline">docs/features/thedi-features-roadmap.md</code></a>:</p>
+
+  <h3>Tier 0 — today</h3>
+  <ul>
+    <li>Close the loop with Ramesh (first real user): verify his feedback from yesterday visibly changes today's digest</li>
+  </ul>
+
+  <h3>Tier 1 — this week</h3>
+  <ul>
+    <li>Dashboard + interests editor (so users can onboard without admin SQL)</li>
+    <li>Welcome digest on signup (T + 2 min instead of T + 24 h)</li>
+    <li>Deploy the hourly cron + step-worker state machine</li>
+    <li>Publish the Google OAuth app (lifts 100-test-user cap)</li>
+  </ul>
+
+  <h3>Tier 2 — "make the digest actually better"</h3>
+  <ul>
+    <li>X via RSS, Semantic Scholar, OpenReview source expansion</li>
+    <li>7-day dedupe against previously delivered items</li>
+    <li>Per-user rate limit + daily cost cap before public launch</li>
+  </ul>
+
+  <h3>Tier 3 — growth + monetization</h3>
+  <ul>
+    <li>Substack draft generator (Ramesh's exact use case)</li>
+    <li>Public shareable findings pages with OG meta → organic growth</li>
+    <li>iMessage delivery via Photon</li>
+    <li>Stripe Connect tiers (Free · Pro $5/mo · Team $15/mo/seat)</li>
+  </ul>
+</section>
+
+<hr class="spacer" />
+
+<section>
+  <h2>📁 Where everything lives</h2>
+  <ul class="stack">
+    <li><strong>Live app</strong> <span class="role"><a href="https://thedi.butterbase.dev" target="_blank">thedi.butterbase.dev</a></span></li>
+    <li><strong>GitHub branch</strong> <span class="role"><a href="https://github.com/ashishranjan2404/ledger-creative-analyzer/tree/feat/thedi-mvp" target="_blank">feat/thedi-mvp</a></span></li>
+    <li><strong>Butterbase app ID</strong> <span class="role"><code>app_36ybfio2fiy7</code></span></li>
+    <li><strong>Yutori reference doc</strong> <span class="role"><a href="./features/yutori-reference.md"><code>docs/features/yutori-reference.md</code></a></span></li>
+    <li><strong>Landscape doc</strong> <span class="role"><a href="./features/research-scout-landscape.md"><code>docs/features/research-scout-landscape.md</code></a></span></li>
+    <li><strong>Thedi roadmap</strong> <span class="role"><a href="./features/thedi-features-roadmap.md"><code>docs/features/thedi-features-roadmap.md</code></a></span></li>
+    <li><strong>v3 design (post-RALF)</strong> <span class="role"><code>docs/superpowers/specs/2026-04-19-thedi-design.md</code></span></li>
+    <li><strong>RALF runner</strong> <span class="role"><code>scripts/ralf_loop.py</code> + <code>scripts/ralf_dedup.py</code></span></li>
+    <li><strong>Thedi v2 research</strong> <span class="role">22-iteration strategic package: <code>thedi-v2-research/</code></span></li>
+  </ul>
+</section>
+
+<section>
+  <h2>🚀 Run it yourself</h2>
+  <p>Trigger a digest via the admin endpoint:</p>
+  <code class="block">curl -X POST https://api.butterbase.ai/v1/app_36ybfio2fiy7/fn/scout-polish-now \
+  -H "Content-Type: application/json" \
+  -d '{
+    "admin_token": "$THEDI_ADMIN_TOKEN",
+    "user_id": "&lt;uuid&gt;",
+    "angle_hint": "what I want to read about today"
+  }'</code>
+
+  <p>Run the RALF loop on any markdown doc:</p>
+  <code class="block">export IONROUTER_KEY=sk-...
+python3 scripts/ralf_loop.py docs/features/yutori-reference.md --max-iters 20</code>
+</section>
+
+<footer>
+  Thedi (தேடி) — Tamil for <em>seek</em>. Built with Butterbase · IonRouter · Resend. Last built: 2026-04-20.
+</footer>
+
+</div>
+</body>
+</html>
