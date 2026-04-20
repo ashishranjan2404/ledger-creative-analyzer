@@ -1,0 +1,152 @@
+--- iter-00
++++ iter-01
+@@ -19,12 +19,30 @@
+ - Founded: 2024 (stealth → public March 27, 2025)
+ - Seed: $15M (Radical Ventures lead, plus Felicis, Elad Gil, Sarah Guo, Jeff Dean, Fei-Fei Li)
+ - Scouts public launch: June 10, 2025
+-- Headcount: ~10 (last public info)
++- Headcount: undisclosed (Fortune article mentions "the trio" of founders)
+ - Position: Consumer, not B2B (deliberately)
+ 
+ ---
+ 
+ ## 2. Scouts — the flagship
++
++### 2.6 Live Artifacts
++Beyond monitoring, Scouts can create **Live Artifacts** — dynamic HTML dashboards, spreadsheets, or documents that auto-update as the web changes. Examples shown on yutori.com:
++- **US Airports Shutdown Map** (HTML)
++- **VCX Fund Dashboard** (HTML)
++- **HTML RL Papers 3D** (interactive visualization)
++
++Artifacts are shareable and can be subscribed to by others. This is a **publishing layer** on top of Scout monitoring — not just alerts, but living documents.
++
++### 2.7 Yutori Local
++A separate product tier for **logged-in website tasks**. Credentials never leave the user's device. Use cases:
++- Social feed monitoring
++- Grocery delivery automation
++- Expense report generation
++- CRM data entry
++- Scheduling tools
++
++This is distinct from cloud-based Scouts — runs locally for privacy-sensitive workflows.
+ 
+ A Scout is a **natural-language-defined monitor** that runs asynchronously in the cloud.
+ 
+@@ -74,10 +92,11 @@
+ | **Web dashboard** | Primary interaction surface; per-scout history |
+ | **Slack** | Channel or DM delivery (per scout) |
+ | **Reply-to-refine** | User replies to an email → the scout adjusts its prompt |
++| **Live Artifact subscription** | Others can subscribe to your Scout findings/artifacts and receive updates |
+ 
+ Cross-channel = a scout can alert iOS + write a summary to Notion + ping Slack, all from one config.
+ 
+----
++**Team sharing**: Users can invite others to view and subscribe to Scout findings and artifacts. This is a **collaboration layer** not mentioned in the original doc.
+ 
+ ## 4. Connectors (authenticated data sources)
+ 
+@@ -91,9 +110,16 @@
+ - **GitHub** — monitor issues, PRs, star counts, releases
+ - **(Stated on roadmap)**: Jira, Asana, Gong, Salesforce, Zendesk
+ 
++The homepage explicitly lists **MCP Design Ecosystem** as a connector framework. This suggests Yutori is building an **open connector standard** (Model Context Protocol) rather than just a fixed list of integrations.
++
++**New connector mentions from homepage**:
++- Expense reports
++- Scheduling tools
++- CRMs
++
++These are not OAuth connectors in the traditional sense — they're **task categories** that Yutori Local handles.
++
+ OAuth-based; each connector is per-user.
+-
+----
+ 
+ ## 5. Personalization model
+ 
+@@ -144,11 +170,16 @@
+ 
+ ## 8. Pricing (public info)
+ 
+-- **Free tier** exists but is waitlist-gated (early 2026)
++- **Free tier** exists and is publicly accessible (pricing page live as of 2026-04-20)
+ - **Paid tiers** not publicly disclosed in pricing page; billed by agent usage ($ per scout run) per community discussion
+ - **Enterprise**: not currently a focus per founders' interviews — consumer-first
+ 
+----
++**Pricing model clarification from homepage**:
++- Scouts: billed by agent usage (per run)
++- Yutori Local: separate tier (credentials stay on-device)
++- Live Artifacts: shareable, subscription-based for viewers
++
++No flat subscription mentioned — still usage-based.
+ 
+ ## 9. Technical foundations (inferred + public)
+ 
+@@ -166,12 +197,13 @@
+ 1. **Scouts are point-tools, not collaborating agents** — two scouts on similar topics don't cross-reference
+ 2. **No MAKER-style multi-agent critique** — single agent per scout, no adversarial review layer
+ 3. **Personalization is prompt-only** — no learned user-model
+-4. **No daily opinionated digest** — it's all monitor-style, not "here's the 10 things you should read this morning"
+-5. **No structured feedback extraction** → persistent preferences
++4. **No daily opinionated digest** — it's all monitor-style, not "here's the 10 things you should read this morning". **However**, Live Artifacts can serve as opinionated dashboards (e.g., VCX Fund Dashboard, US Airports Shutdown Map).
++5. **No structured feedback extraction** → persistent preferences. **However**, Yutori now supports **artifact subscriptions** where users can refine via follow-up prompts on shared artifacts.
+ 6. **English-first**; limited multilingual
+-7. **No community / social features** — scouts don't compare to peers' scouts
+-
+----
++7. **No community / social features** — scouts don't compare to peers' scouts. **Clarification**: there's a gallery of public scout examples, but no peer comparison or social feed.
++8. **No team collaboration on artifacts** — while you can share artifacts, there's no mention of multi-user editing or role-based access
++9. **Yutori Local is separate from Scouts** — two distinct product tiers, not unified under one agent
++10. **No MCP marketplace** — while MCP is mentioned, no public connector marketplace exists yet
+ 
+ ## 11. Direct quotes (for positioning)
+ 
+@@ -179,15 +211,25 @@
+ 
+ > "Scouts work in the background while you live your life. They're not a chatbot you have to visit; they come to you when something's worth your attention."
+ 
++> "It's like having a team of personal assistants working round the clock, just for you."
++
++> "And if you're curious about the magic behind Scouts, you can inspect its work to see what it did to gather the information. That means seeing the steps it took— the todos it broke the task down to, the pages it visited, the filters it used, and the content it pulled. Like an audit trail to help you build confidence and trust Scouts in your daily life."
++
+ From Fortune interview:
+ 
+ > "The dream is digital agents that can do anything on the web. Scouts is the first product — we start with 'watch for me' because it's where AI agents provide immediate, daily value without being in the user's face."
+ 
++> "The web is simultaneously one of humanity's greatest inventions—and really, really clunky."
++
++> "Yutori's long-term dream... is to build AI personal assistants—in the form of web agents—that can take daily digital chores off your plate without you lifting a finger, leaving you with time to tackle whatever brings you joy."
++
++> "That's something that's harder for larger entities to think through from scratch, since they are incentivized to think about their existing products."
++
++> "We have the luxury to be able to just think from scratch."
++
+ From [seed-funding announcement](https://www.globenewswire.com/news-release/2025/03/27/3050486/0/en/Yutori-Launches-from-Stealth-with-15M-Seed-Funding-to-Build-Consumer-AI-Assistants-Capable-of-Everyday-Tasks-on-the-Web.html):
+ 
+ > "Yutori is building consumer AI assistants that can complete everyday tasks on the web — from booking tickets, to tracking deals, to monitoring news, to reserving hard-to-get appointments."
+-
+----
+ 
+ ## 12. What Thedi can adopt from Yutori
+ 
+@@ -241,3 +283,19 @@
+ 4. [blog.yutori.com/p/scouts](https://blog.yutori.com/p/scouts) — Scouts launch post
+ 5. [Fortune launch story (2025-06-10)](https://fortune.com/2025/06/10/exclusive-ex-meta-ai-leaders-agent-web-yutori/)
+ 6. [GlobeNewswire seed announcement (2025-03-27)](https://www.globenewswire.com/news-release/2025/03/27/3050486/0/en/Yutori-Launches-from-Stealth-with-15M-Seed-Funding-to-Build-Consumer-AI-Assistants-Capable-of-Everyday-Tasks-on-the-Web.html)
++
++## 16. Product tiers (new from homepage)
++
++Yutori now has **three distinct product surfaces**:
++
++| Tier | Description | Credentials | Billing |
++|---|---|---|---|
++| **Scouts** | Cloud-based monitoring agents | OAuth (server-side) | Per-run usage |
++| **Yutori Local** | Logged-in website automation | On-device only | Separate tier |
++| **Live Artifacts** | Shareable dashboards/documents | N/A (output layer) | Subscription for viewers |
++
++This is a **critical architectural distinction** not captured in the original doc. Scouts and Local are not the same product.
++
++7. [Yutori Home Page](https://yutori.com/) — captured 2026-04-20 (web context provided)
++8. [Yutori Scouts Page](https://yutori.com/scouts) — captured 2026-04-20 (web context provided)
++9. [Yutori Blog Substack](https://blog.yutori.com/) — captured 2026-04-20 (web context provided)

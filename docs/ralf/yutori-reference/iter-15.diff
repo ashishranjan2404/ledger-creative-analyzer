@@ -1,0 +1,109 @@
+--- iter-14
++++ iter-15
+@@ -328,15 +328,15 @@
+ 
+ ### 12.1 Two-Week Sprint Plan (Next 14 Days)
+ 
+-**Goal:** Close the trust gap and enable multi-channel delivery before Yutori's next feature drop.
+-
+-| Priority | Action | Yutori Section | Est. Effort | Owner |
+-|---|---|---|---|---|
+-| **P0** | **Ship User-Visible Audit Trail** — Add a "View Scout Run" modal to the digest email footer and web dashboard. Show: pages visited, filters applied, reasoning chain, rejected candidates. | 2.4 Audit trail | 3 days | Eng |
+-| **P1** | **Enable Reply-to-Refine** — Wire inbound email replies to `scout-feedback-submit` endpoint. Parse user text as prompt adjustment for next run. | 3. Delivery channels | 2 days | Eng |
+-| **P1** | **Add Webhook Delivery** — Allow users to configure a webhook URL per scout. Emit JSON payload on match. | 3. Delivery channels | 2 days | Eng |
+-| **P2** | **Cost Transparency Badge** — Display token/compute cost per digest in the email footer and dashboard. | 2.5 Cost transparency | 1 day | Eng |
+-| **P2** | **Starter Scout Templates** — On signup, show 5 pre-built scouts (News, Research, Price, Launch, Mention) with one-click "Create". | 6. Scout types | 1 day | Design |
++**Goal:** Close the trust gap (Audit Trail) and enable multi-channel delivery (Webhooks) before Yutori's next feature drop.
++
++| Priority | Action | Yutori Section | Est. Effort | Owner | Success Metric |
++|---|---|---|---|---|---|
++| **P0** | **Ship User-Visible Audit Trail** — Add a "View Scout Run" modal to the digest email footer and web dashboard. Show: pages visited, filters applied, reasoning chain, rejected candidates. | 2.4 Audit trail | 3 days | Eng | 80% of active users view audit trail at least once |
++| **P1** | **Enable Reply-to-Refine** — Wire inbound email replies to `scout-feedback-submit` endpoint. Parse user text as prompt adjustment for next run. | 3. Delivery channels | 2 days | Eng | 30% of users enable webhook delivery |
++| **P1** | **Add Webhook Delivery** — Allow users to configure a webhook URL per scout. Emit JSON payload on match. | 3. Delivery channels | 2 days | Eng | 50% reduction in "why did you send this?" support tickets |
++| **P2** | **Cost Transparency Badge** — Display token/compute cost per digest in the email footer and dashboard. | 2.5 Cost transparency | 1 day | Eng | 20% increase in scout creation rate (due to templates) |
++| **P2** | **Starter Scout Templates** — On signup, show 5 pre-built scouts (News, Research, Price, Launch, Mention) with one-click "Create". | 6. Scout types | 1 day | Design | |
+ 
+ **Why these first?**
+ - Audit trail is Yutori's **trust primitive** — we must match it to avoid being seen as a "black box".
+@@ -350,24 +350,6 @@
+ - NL-to-structured scout parsing — P3, we already have form-based creation.
+ - iOS app — P3, web dashboard + email is sufficient for MVP.
+ - Live Artifacts — P3, not core to research digest use case.
+-
+-**Success metrics for 2 weeks:**
+-- 80% of active users view audit trail at least once.
+-- 30% of users enable webhook delivery.
+-- 50% reduction in "why did you send this?" support tickets.
+-- 20% increase in scout creation rate (due to templates).
+-
+-Priority-ordered for our roadmap (see also `docs/features/thedi-roadmap.md`):
+-
+-| Yutori feature | Thedi action | Priority |
+-|---|---|---|
+-| **User-visible audit trail per run** (pages visited, filters, reasoning) | Add "View Scout Run" modal to email footer + dashboard. Show pages, filters, reasoning, rejected candidates. | **P0** — trust primitive (2 weeks) |
+-| **Reply-to-email to refine** | Wire inbound email replies to `scout-feedback-submit`. Parse as prompt adjustment. | **P1** — low-lift UX win (2 weeks) |
+-| **Multi-channel delivery** (email + iOS push + webhook) | Add webhook URL config + JSON emit per scout. | **P1** — programmatic downstream (2 weeks) |
+-| **Authenticated connectors** (Gmail, Slack, Notion) | Not near-term — but flag as a differentiator we're missing | P2 |
+-| **Prompt-parsed scout creation** (NL → structured scout) | We already have a form-based one; could layer NL parsing later | P3 |
+-| **Scout templates / gallery** (news, price, research, etc.) | On signup, show 5 pre-built scouts with one-click "Create". | **P2** — onboarding friction (2 weeks) |
+-| **Per-scout cost transparency in-product** | Display token/compute cost in email footer + dashboard. | **P2** — pricing trust (2 weeks) |
+ 
+ ## 13. What Thedi does that Yutori doesn't
+ 
+@@ -458,6 +440,19 @@
+ 
+ ## 16. Product Tiers
+ 
++### 16.1 Pricing Page Details
++Homepage explicitly states **"Start for free"** and **"See Pricing"** link is visible (not waitlist-gated as of 2026-04-20).
++
++**Pricing model**:
++- **Scouts**: Billed per agent usage (per scout run), not flat subscription
++- **Yutori Local**: Separate tier (on-device automation)
++- **Live Artifacts**: Subscription for viewers (shareable dashboards/documents)
++
++**Homepage copy confirms**:
++- "Start for free" button visible
++- "See Pricing" link visible
++- Three product surfaces clearly distinguished: Scouts, Yutori Local, Live Artifacts
++
+ Yutori now has **three distinct product surfaces** (confirmed on homepage 2026-04-20):
+ 
+ | Tier | Description | Credentials | Billing |
+@@ -477,6 +472,21 @@
+ **Critical architectural distinction**: Scouts and Local are not the same product. Scouts run in the cloud; Local runs on-device for privacy-sensitive workflows.
+ 
+ ## 17. Recent Announcements (2026-04-20)
++
++**Homepage updates captured 2026-04-20**:
++- **MCP Design Ecosystem** now explicitly listed as a connector framework
++- **Team sharing** feature added to homepage copy ("Share with your team. Invite others to view and subscribe to your Scout findings and artifacts.")
++- **Pricing page** is now live and publicly accessible ("See Pricing" link visible)
++- **Three product surfaces** clearly distinguished: Scouts, Yutori Local, Live Artifacts
++
++**Blog updates**:
++- Scouts launch post (June 10, 2025) remains the primary product announcement
++- No new product announcements since launch (as of 2026-04-20)
++
++**Community gallery**:
++- Homepage features "Scouts from the community" section
++- Examples include news tracking, live-updating websites, reservation booking
++- No peer comparison or social feed features
+ 
+ **Homepage updates captured 2026-04-20**:
+ - **MCP Design Ecosystem** now explicitly listed as a connector framework
+@@ -623,6 +633,14 @@
+ 
+ This indicates Yutori has a dedicated trust infrastructure (unlike many AI startups that lack formal trust centers). Thedi should consider adding similar links for enterprise readiness.
+ 
++Homepage footer explicitly links to:
++- **CHANGELOG**
++- **PRIVACY**
++- **TERMS**
++- **TRUST CENTER**
++
++This indicates Yutori has a dedicated trust infrastructure (unlike many AI startups that lack formal trust centers). Thedi should consider adding similar links for enterprise readiness.
++
+ ---
+ 
+ ## 17. Recent Announcements (2026-04-20)

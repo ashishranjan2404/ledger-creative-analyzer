@@ -1,0 +1,85 @@
+--- iter-07
++++ iter-08
+@@ -66,6 +66,14 @@
+ 
+ Artifacts are shareable and can be subscribed to by others. This is a **publishing layer** on top of Scout monitoring — not just alerts, but living documents.
+ 
++### 2.6.1 Artifact Examples
++Homepage explicitly showcases three live artifact examples:
++- **HTML RL Papers 3D** — interactive 3D visualization of reinforcement learning papers
++- **HTML US Airports Shutdown Map** — live-updating map of airport closures
++- **HTML VCX Fund Dashboard** — fund performance tracking dashboard
++
++These artifacts are **shareable** and can be **subscribed to by others** (viewers don't need Yutori accounts). This is a **publishing layer** on top of Scout monitoring — not just alerts, but living documents that auto-update as the web changes.
++
+ ### 2.7 Yutori Local
+ 
+ A separate product tier for **logged-in website tasks**. Credentials never leave the user's device. Use cases explicitly listed on homepage:
+@@ -80,15 +88,6 @@
+ A Scout is a **natural-language-defined monitor** that runs asynchronously in the cloud.
+ 
+ ## 3. Delivery channels
+-
+-### 3.2 Reply-to-Refine
+-Homepage explicitly states: **"Reply directly to refine results or ask follow-ups."**
+-
+-This is a **feedback loop** where users can reply to email digests or interact via web to adjust scout behavior. Not just thumbs up/down — natural language refinement.
+-
+-**Homepage copy confirms**:
+-- "Reply directly to refine results or ask follow-ups"
+-- This applies to both email and web interactions
+ 
+ ### 3.1 Team Collaboration
+ Yutori explicitly supports **team sharing** of Scout findings and artifacts:
+@@ -112,7 +111,26 @@
+ 
+ Cross-channel = a scout can alert iOS + write a summary to Notion + ping Slack, all from one config.
+ 
+-**Team sharing**: Users can invite others to view and subscribe to Scout findings and artifacts. This is a **collaboration layer** not mentioned in the original doc.
++### 3.2 Reply-to-Refine
++Homepage explicitly states: **"Reply directly to refine results or ask follow-ups."**
++
++This is a **feedback loop** where users can reply to email digests or interact via web to adjust scout behavior. Not just thumbs up/down — natural language refinement.
++
++**Homepage copy confirms**:
++- "Reply directly to refine results or ask follow-ups"
++- This applies to both email and web interactions
++
++### 3.3 MCP Design Ecosystem
++Homepage explicitly lists **MCP Design Ecosystem** as a connector framework:
++- Connect Gmail, Slack, Notion, etc.
++- Agents monitor inbox for leads, surface important messages
++- Track updates in docs without manual checking
++
++This suggests Yutori is building an **open connector standard** (Model Context Protocol) rather than just a fixed list of integrations. The MCP framework is a **design ecosystem** — not just a technical protocol.
++
++**Homepage copy confirms**:
++- "Connect your context. Connect Gmail, Slack, Notion, etc., and have agents monitor your inbox for leads, surface important messages, or track updates in your docs — without manual checking."
++- "MCP Design Ecosystem" is explicitly named as a connector framework
+ 
+ ## 4. Connectors (authenticated data sources)
+ 
+@@ -432,3 +450,23 @@
+ - Homepage features "Scouts from the community" section
+ - Examples include news tracking, live-updating websites, reservation booking
+ - No peer comparison or social feed features
++
++## 16. Product tiers (new from homepage)
++
++Yutori now has **three distinct product surfaces**:
++
++| Tier | Description | Credentials | Billing |
++|---|---|---|---|
++| **Scouts** | Cloud-based monitoring agents | OAuth (server-side) | Per-run usage |
++| **Yutori Local** | Logged-in website automation | On-device only | Separate tier |
++| **Live Artifacts** | Shareable dashboards/documents | N/A (output layer) | Subscription for viewers |
++
++This is a **critical architectural distinction** not captured in the original doc. Scouts and Local are not the same product.
++
++**Homepage copy confirms**:
++- "Scouts do handle your busywork on the web. You focus on what matters."
++- "Yutori Local For tasks on logged-in websites. Run agents on any logged-in website. Credentials never leave your device."
++- "Live Artifacts Create a live artifact — a website, dashboard, document, spreadsheet — that stays updated as the world changes."
++- "Start for free" button visible
++- "See Pricing" link visible
++- Three product surfaces clearly distinguished

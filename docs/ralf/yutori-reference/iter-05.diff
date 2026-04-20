@@ -1,0 +1,181 @@
+--- iter-04
++++ iter-05
+@@ -25,34 +25,6 @@
+ ---
+ 
+ ## 2. Scouts — the flagship
+-
+-### 2.8 Artifact Examples
+-The homepage explicitly showcases three Live Artifact templates:
+-- **HTML RL Papers 3D** — interactive visualization of reinforcement learning papers
+-- **HTML US Airports Shutdown Map** — real-time map of airport closures
+-- **HTML VCX Fund Dashboard** — live-updating fund performance tracker
+-
+-These are not just dashboards — they are **shareable HTML pages** that auto-update as the underlying Scout data changes. Viewers can subscribe to artifact updates without needing a Yutori account.
+-
+-### 2.6 Live Artifacts
+-Beyond monitoring, Scouts can create **Live Artifacts** — dynamic HTML dashboards, spreadsheets, or documents that auto-update as the web changes. Examples shown on yutori.com:
+-- **US Airports Shutdown Map** (HTML)
+-- **VCX Fund Dashboard** (HTML)
+-- **HTML RL Papers 3D** (interactive visualization)
+-
+-Artifacts are shareable and can be subscribed to by others. This is a **publishing layer** on top of Scout monitoring — not just alerts, but living documents.
+-
+-### 2.7 Yutori Local
+-A separate product tier for **logged-in website tasks**. Credentials never leave the user's device. Use cases:
+-- Social feed monitoring
+-- Grocery delivery automation
+-- Expense report generation
+-- CRM data entry
+-- Scheduling tools
+-
+-This is distinct from cloud-based Scouts — runs locally for privacy-sensitive workflows.
+-
+-A Scout is a **natural-language-defined monitor** that runs asynchronously in the cloud.
+ 
+ ### 2.1 How a user creates one
+ - Type a prompt like *"Tell me when Arc Browser releases a new version"* or *"Track new Bay Area startup layoffs"* or *"Watch arxiv for papers on speculative decoding"*
+@@ -86,7 +58,33 @@
+ ### 2.5 Cost transparency
+ Each scout displays token/compute cost per run and cumulative month-to-date. Pricing model billed on agent usage, not flat subscription.
+ 
+----
++### 2.6 Live Artifacts
++Beyond monitoring, Scouts can create **Live Artifacts** — dynamic HTML dashboards, spreadsheets, or documents that auto-update as the web changes. Examples shown on yutori.com:
++- **US Airports Shutdown Map** (HTML)
++- **VCX Fund Dashboard** (HTML)
++- **HTML RL Papers 3D** (interactive visualization)
++
++Artifacts are shareable and can be subscribed to by others. This is a **publishing layer** on top of Scout monitoring — not just alerts, but living documents.
++
++### 2.7 Yutori Local
++A separate product tier for **logged-in website tasks**. Credentials never leave the user's device. Use cases:
++- Social feed monitoring
++- Grocery delivery automation
++- Expense report generation
++- CRM data entry
++- Scheduling tools
++
++This is distinct from cloud-based Scouts — runs locally for privacy-sensitive workflows.
++
++A Scout is a **natural-language-defined monitor** that runs asynchronously in the cloud.
++
++### 2.8 Artifact Examples
++The homepage explicitly showcases three Live Artifact templates:
++- **HTML RL Papers 3D** — interactive visualization of reinforcement learning papers
++- **HTML US Airports Shutdown Map** — real-time map of airport closures
++- **HTML VCX Fund Dashboard** — live-updating fund performance tracker
++
++These are not just dashboards — they are **shareable HTML pages** that auto-update as the underlying Scout data changes. Viewers can subscribe to artifact updates without needing a Yutori account.
+ 
+ ## 3. Delivery channels
+ 
+@@ -194,6 +192,28 @@
+ 
+ ## 8. Pricing (public info)
+ 
++### 8.1 Pricing Page Status
++As of 2026-04-20, the pricing page is **live and publicly accessible** (not waitlist-gated):
++- "See Pricing" link is visible on homepage
++- Free tier exists and is publicly accessible
++- Paid tiers not publicly disclosed in pricing page; billed by agent usage ($ per scout run) per community discussion
++
++- **Free tier** exists and is publicly accessible (pricing page live as of 2026-04-20)
++- **Paid tiers** not publicly disclosed in pricing page; billed by agent usage ($ per scout run) per community discussion
++- **Enterprise**: not currently a focus per founders' interviews — consumer-first
++
++**Pricing model clarification from homepage**:
++- Scouts: billed by agent usage (per run)
++- Yutori Local: separate tier (credentials stay on-device)
++- Live Artifacts: shareable, subscription-based for viewers
++
++No flat subscription mentioned — still usage-based.
++
++**Homepage copy confirms**:
++- "Start for free" button visible
++- "See Pricing" link visible
++- Three product surfaces clearly distinguished
++
+ ### 8.2 Product Tiers
+ 
+ Yutori now has **three distinct product surfaces**:
+@@ -206,23 +226,6 @@
+ 
+ This is a **critical architectural distinction** not captured in the original doc. Scouts and Local are not the same product.
+ 
+-### 8.1 Pricing Page Status
+-As of 2026-04-20, the pricing page is **live and publicly accessible** (not waitlist-gated):
+-- "See Pricing" link is visible on homepage
+-- Free tier exists and is publicly accessible
+-- Paid tiers not publicly disclosed in pricing page; billed by agent usage ($ per scout run) per community discussion
+-
+-- **Free tier** exists and is publicly accessible (pricing page live as of 2026-04-20)
+-- **Paid tiers** not publicly disclosed in pricing page; billed by agent usage ($ per scout run) per community discussion
+-- **Enterprise**: not currently a focus per founders' interviews — consumer-first
+-
+-**Pricing model clarification from homepage**:
+-- Scouts: billed by agent usage (per run)
+-- Yutori Local: separate tier (credentials stay on-device)
+-- Live Artifacts: shareable, subscription-based for viewers
+-
+-No flat subscription mentioned — still usage-based.
+-
+ ## 9. Technical foundations (inferred + public)
+ 
+ - **LLM backend**: not publicly stated, but Dhruv Batra has mentioned *"frontier models with heavy tool-use"* — likely GPT-4o / Claude + internal fine-tunes for browser agent
+@@ -234,27 +237,14 @@
+ 
+ ## 10. Known limitations (what Yutori ships today)
+ 
+-### 10.2 Recent Announcements (2026-04-20)
+-
+-**Homepage updates captured 2026-04-20**:
+-- **MCP Design Ecosystem** now explicitly listed as a connector framework
+-- **Team sharing** feature added to homepage copy ("Share with your team. Invite others to view and subscribe to your Scout findings and artifacts.")
+-- **Pricing page** is now live and publicly accessible ("See Pricing" link visible)
+-- **Three product surfaces** clearly distinguished: Scouts, Yutori Local, Live Artifacts
+-
+-**Blog updates**:
+-- Scouts launch post (June 10, 2025) remains the primary product announcement
+-- No new product announcements since launch (as of 2026-04-20)
+-
+-**Community gallery**:
+-- Homepage features "Scouts from the community" section
+-- Examples include news tracking, live-updating websites, reservation booking
+-- No peer comparison or social feed features
+-
+ ### 10.1 Team Collaboration Limitations
+ Per homepage and Fortune coverage:
+ - **Team sharing exists but is limited** — you can invite others to view and subscribe to Scout findings and artifacts, but there's no mention of multi-user editing or role-based access
+ - **No peer comparison** — scouts don't compare to peers' scouts (community gallery exists, but no social feed or benchmarking)
++
++**Homepage copy confirms**:
++- "Share with your team. Invite others to view and subscribe to your Scout findings and artifacts."
++- No mention of multi-user editing or role-based access
+ 
+ Per community feedback + Fortune/blog coverage:
+ 
+@@ -269,6 +259,23 @@
+ 9. **Yutori Local is separate from Scouts** — two distinct product tiers, not unified under one agent
+ 10. **No MCP marketplace** — while MCP is mentioned, no public connector marketplace exists yet, though MCP Design Ecosystem is now explicitly listed as a connector framework on homepage
+ 
++### 10.2 Recent Announcements (2026-04-20)
++
++**Homepage updates captured 2026-04-20**:
++- **MCP Design Ecosystem** now explicitly listed as a connector framework
++- **Team sharing** feature added to homepage copy ("Share with your team. Invite others to view and subscribe to your Scout findings and artifacts.")
++- **Pricing page** is now live and publicly accessible ("See Pricing" link visible)
++- **Three product surfaces** clearly distinguished: Scouts, Yutori Local, Live Artifacts
++
++**Blog updates**:
++- Scouts launch post (June 10, 2025) remains the primary product announcement
++- No new product announcements since launch (as of 2026-04-20)
++
++**Community gallery**:
++- Homepage features "Scouts from the community" section
++- Examples include news tracking, live-updating websites, reservation booking
++- No peer comparison or social feed features
++
+ ## 11. Direct quotes (for positioning)
+ 
+ ### 11.1 Additional Founder Quotes

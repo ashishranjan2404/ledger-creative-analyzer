@@ -1,0 +1,90 @@
+--- iter-12
++++ iter-13
+@@ -381,31 +381,69 @@
+ 
+ ## 14. Competitive cross-reference
+ 
+-See [`docs/features/research-scout-landscape.md`](./research-scout-landscape.md) for the broader competitive set (Elicit, Research Rabbit, Feedly Leo, Emergent Mind, Perplexity Pro, etc.).
+-
+-**TL;DR of where Yutori sits in that landscape**: It's the **only general-purpose agentic scout platform** (vs. academic-only Elicit, graph-only Research Rabbit, arxiv-only Emergent Mind, RSS-only Feedly Leo, search-only Perplexity Pro). Thedi differentiates by being **deeper in research** with a **multi-agent critique pipeline** (selector → critic → refiner → red-flag), **cross-source fusion** (arxiv + HN + X merged into one ranked list), and **opinionated daily-digest format** (10 items, ranked, with per-item angle).
+-
+-**See Section 14.1 for a detailed feature comparison table.**
+-
+----
++### 14.1 Direct Competitor Comparison Table
++
++| Feature | Yutori | Thedi | Feedly Leo | Elicit | Perplexity Pro | Zapier Interfaces | Bardeen.ai | Clay.com |
++|---|---|---|---|---|---|---|---|---|
++| **Primary Use Case** | General web monitoring (news, deals, research) | Research-focused daily digest | RSS/news aggregation with AI | Academic paper discovery | General search + research | No-code automation + AI | Browser automation + scraping | B2B sales intelligence |
++| **Agent Architecture** | Single-agent per scout | Multi-agent loop (selector → critic → refiner) | Single-agent summarizer | Single-agent paper finder | Single-agent search | Single-agent workflow | Single-agent automation | Single-agent enrichment |
++| **Audit Trail** | User-visible (pages visited, reasoning) | Thedi has `audit_log` but not user-visible | No audit trail | No audit trail | No audit trail | No audit trail | No audit trail | No audit trail |
++| **Reply-to-Refine** | Yes (email + web) | Yes (feedback chat) | No | No | No | No | No | No |
++| **Live Artifacts** | Yes (shareable dashboards) | No | No | No | No | No | No | No |
++| **Yutori Local** | Yes (on-device automation) | No | No | No | No | No | No | No |
++| **MCP Connectors** | Yes (Gmail, Slack, Notion, etc.) | No (P2 roadmap) | No | No | No | Yes (1000+ integrations) | Yes (browser extensions) | Yes (CRM integrations) |
++| **Team Sharing** | Yes (view/subscribe only) | No | Yes (workspaces) | No | No | Yes (workspaces) | No | Yes (workspaces) |
++| **Pricing Model** | Per-run usage | Flat subscription | Flat subscription | Flat subscription | Flat subscription | Flat subscription | Flat subscription | Flat subscription |
++| **Multilingual** | English-first | English-first | Multi-language | English-first | Multi-language | Multi-language | English-first | English-first |
++| **Always-On Monitoring** | Yes | Yes | Yes | No | No | No | No | No |
++| **Browser Automation** | Yes (cloud-based) | No | No | No | No | Limited (premium) | Yes (extension-based) | No |
++| **Multi-Agent Critique** | No | Yes | No | No | No | No | No | No |
++| **Cross-Source Fusion** | No (per-scout) | Yes (arxiv + HN + X merged) | No | No | No | No | No | No |
++
++**Key Takeaway:** Yutori is the only **general-purpose agentic scout platform** with **user-visible audit trails** and **live artifacts**. Thedi differentiates by being **deeper in research** with a **multi-agent critique pipeline**.
++
++### 14.5 Missing Competitor: Zapier Interfaces
++
++**Zapier Interfaces** is a direct competitor in the **no-code automation + AI agent** space that Thedi should track:
++- **Feature overlap:** Both offer AI-powered web monitoring with multi-channel delivery (email, webhooks, Slack)
++- **Differentiation:** Zapier is **workflow-first** (requires pre-built triggers/actions), Yutori/Thedi are **intent-first** (natural language prompts)
++- **Thedi advantage:** Zapier has **no browser automation** — can't access dynamic content or logged-in sites without premium connectors
++- **Thedi advantage:** Zapier has **no audit trail** — users can't verify what the agent saw or why it made decisions
++- **Thedi advantage:** Zapier has **no multi-agent critique loop** — single-pass workflow execution
++
++**Action:** Add Zapier Interfaces to the watchlist in Section 15.
++
++### 14.6 Missing Competitor: Bardeen.ai
++
++**Bardeen.ai** is a direct competitor in the **browser automation + AI agent** space that Thedi should track:
++- **Feature overlap:** Both offer browser automation for web scraping and monitoring tasks
++- **Differentiation:** Bardeen is **extension-first** (runs in browser), Yutori/Thedi are **cloud-first** (run asynchronously in background)
++- **Thedi advantage:** Bardeen requires **user to be logged in** to run automations — not truly "always-on"
++- **Thedi advantage:** Bardeen has **no multi-agent critique loop** — single-pass automation
++- **Thedi advantage:** Bardeen has **no reply-to-refine** — users must reconfigure automations for adjustments
++
++**Action:** Add Bardeen.ai to the watchlist in Section 15.
++
++### 14.7 Missing Competitor: Clay.com
++
++**Clay.com** is a direct competitor in the **data enrichment + AI agent** space that Thedi should track:
++- **Feature overlap:** Both offer AI-powered data gathering from multiple web sources
++- **Differentiation:** Clay is **B2B sales intelligence** focused, Yutori/Thedi are **consumer research** focused
++- **Thedi advantage:** Clay has **no always-on monitoring** — users must manually trigger enrichment runs
++- **Thedi advantage:** Clay has **no multi-agent critique loop** — single-pass data enrichment
++- **Thedi advantage:** Clay has **no reply-to-refine** — users must reconfigure enrichment workflows
++
++**Action:** Add Clay.com to the watchlist in Section 15.
+ 
+ ## 15. Watchlist — things to track about Yutori
+-
+-- New connector launches (they ship frequently)
+-- Pricing page going public (currently waitlist-gated)
+-- Any move into research-digest territory (direct overlap risk)
+-- Changes to audit trail UX (we should match whatever quality bar they set)
+-- Team scaling → faster feature velocity
+-- **New competitor launches** (Perplexity Pro, Feedly Leo, Elicit feature updates)
+-
+-Check quarterly: https://blog.yutori.com, X @yutoriai, the founders' personal accounts.
+ 
+ **Also track:**
+ - Perplexity Pro: https://www.perplexity.ai
+ - Feedly Leo: https://feedly.com/leo
+ - Elicit: https://elicit.org
+-
+----
++- Zapier Interfaces: https://zapier.com/interfaces
++- Bardeen.ai: https://www.bardeen.ai
++- Clay.com: https://www.clay.com
+ 
+ ## Appendix — sources
+ 

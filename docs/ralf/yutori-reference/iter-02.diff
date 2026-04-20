@@ -1,0 +1,56 @@
+--- iter-01
++++ iter-02
+@@ -233,17 +233,48 @@
+ 
+ ## 12. What Thedi can adopt from Yutori
+ 
++### 12.1 Two-Week Sprint Plan (Next 14 Days)
++
++**Goal:** Close the trust gap and enable multi-channel delivery before Yutori's next feature drop.
++
++| Priority | Action | Yutori Section | Est. Effort | Owner |
++|---|---|---|---|---|
++| **P0** | **Ship User-Visible Audit Trail** — Add a "View Scout Run" modal to the digest email footer and web dashboard. Show: pages visited, filters applied, reasoning chain, rejected candidates. | 2.4 Audit trail | 3 days | Eng |
++| **P1** | **Enable Reply-to-Refine** — Wire inbound email replies to `scout-feedback-submit` endpoint. Parse user text as prompt adjustment for next run. | 3. Delivery channels | 2 days | Eng |
++| **P1** | **Add Webhook Delivery** — Allow users to configure a webhook URL per scout. Emit JSON payload on match. | 3. Delivery channels | 2 days | Eng |
++| **P2** | **Cost Transparency Badge** — Display token/compute cost per digest in the email footer and dashboard. | 2.5 Cost transparency | 1 day | Eng |
++| **P2** | **Starter Scout Templates** — On signup, show 5 pre-built scouts (News, Research, Price, Launch, Mention) with one-click "Create". | 6. Scout types | 1 day | Design |
++
++**Why these first?**
++- Audit trail is Yutori's **trust primitive** — we must match it to avoid being seen as a "black box".
++- Reply-to-refine is **low-lift UX win** that leverages existing email infrastructure.
++- Webhooks enable **programmatic downstream** (Zapier, custom code) — critical for power users.
++- Cost transparency builds **pricing trust** before we scale usage.
++- Templates reduce **onboarding friction** — Yutori's "one prompt box" is simpler than our form.
++
++**What to skip for now:**
++- Authenticated connectors (Gmail, Slack, Notion) — P2, requires OAuth infra.
++- NL-to-structured scout parsing — P3, we already have form-based creation.
++- iOS app — P3, web dashboard + email is sufficient for MVP.
++- Live Artifacts — P3, not core to research digest use case.
++
++**Success metrics for 2 weeks:**
++- 80% of active users view audit trail at least once.
++- 30% of users enable webhook delivery.
++- 50% reduction in "why did you send this?" support tickets.
++- 20% increase in scout creation rate (due to templates).
++
+ Priority-ordered for our roadmap (see also `docs/features/thedi-roadmap.md`):
+ 
+ | Yutori feature | Thedi action | Priority |
+ |---|---|---|
+-| **User-visible audit trail per run** (pages visited, filters, reasoning) | Expose our `audit_log` + `critiques` on a per-digest admin view | **P0** — trust primitive |
+-| **Reply-to-email to refine** | Resend inbound webhook → scout-feedback-submit | **P1** — low-lift UX win |
+-| **Multi-channel delivery** (email + iOS push + webhook) | Add webhook emit + consider iOS/PWA later | **P1** |
++| **User-visible audit trail per run** (pages visited, filters, reasoning) | Add "View Scout Run" modal to email footer + dashboard. Show pages, filters, reasoning, rejected candidates. | **P0** — trust primitive (2 weeks) |
++| **Reply-to-email to refine** | Wire inbound email replies to `scout-feedback-submit`. Parse as prompt adjustment. | **P1** — low-lift UX win (2 weeks) |
++| **Multi-channel delivery** (email + iOS push + webhook) | Add webhook URL config + JSON emit per scout. | **P1** — programmatic downstream (2 weeks) |
+ | **Authenticated connectors** (Gmail, Slack, Notion) | Not near-term — but flag as a differentiator we're missing | P2 |
+ | **Prompt-parsed scout creation** (NL → structured scout) | We already have a form-based one; could layer NL parsing later | P3 |
+-| **Scout templates / gallery** (news, price, research, etc.) | Useful for onboarding — suggest 5 starter scouts per signup | P2 |
+-| **Per-scout cost transparency in-product** | Show users what their digest cost to generate | P2 |
++| **Scout templates / gallery** (news, price, research, etc.) | On signup, show 5 pre-built scouts with one-click "Create". | **P2** — onboarding friction (2 weeks) |
++| **Per-scout cost transparency in-product** | Display token/compute cost in email footer + dashboard. | **P2** — pricing trust (2 weeks) |
+ 
+ ## 13. What Thedi does that Yutori doesn't
+ 

@@ -1,0 +1,90 @@
+--- iter-08
++++ iter-09
+@@ -225,32 +225,7 @@
+ - "See Pricing" link visible
+ - Three product surfaces clearly distinguished
+ 
+-### 8.2 Product Tiers
+-
+-Yutori now has **three distinct product surfaces**:
+-
+-| Tier | Description | Credentials | Billing |
+-|---|---|---|---|
+-| **Scouts** | Cloud-based monitoring agents | OAuth (server-side) | Per-run usage |
+-| **Yutori Local** | Logged-in website automation | On-device only | Separate tier |
+-| **Live Artifacts** | Shareable dashboards/documents | N/A (output layer) | Subscription for viewers |
+-
+-This is a **critical architectural distinction** not captured in the original doc. Scouts and Local are not the same product.
+-
+-**Pricing model clarification from homepage**:
+-- Scouts: billed by agent usage (per run)
+-- Yutori Local: separate tier (credentials stay on-device)
+-- Live Artifacts: shareable, subscription-based for viewers
+-
+-No flat subscription mentioned — still usage-based.
+-
+-**Homepage copy confirms**:
+-- "Scouts do handle your busywork on the web. You focus on what matters."
+-- "Yutori Local For tasks on logged-in websites. Run agents on any logged-in website. Credentials never leave your device."
+-- "Live Artifacts Create a live artifact — a website, dashboard, document, spreadsheet — that stays updated as the world changes."
+-- "Start for free" button visible
+-- "See Pricing" link visible
+-- Three product surfaces clearly distinguished
++
+ 
+ ## 9. Technical foundations (inferred + public)
+ 
+@@ -272,6 +247,25 @@
+ **Homepage copy confirms**:
+ - "Share with your team. Invite others to view and subscribe to your Scout findings and artifacts."
+ - No mention of multi-user editing or role-based access
++
++### 10.2 MCP Marketplace Status
++
++While the **MCP Design Ecosystem** is explicitly listed as a connector framework on the homepage, there is **no public connector marketplace** yet. The MCP framework is a design ecosystem rather than a technical protocol alone.
++
++**Homepage copy confirms**:
++- "Connect your context. Connect Gmail, Slack, Notion, etc., and have agents monitor your inbox for leads, surface important messages, or track updates in your docs — without manual checking."
++- "MCP Design Ecosystem" is explicitly named as a connector framework
++
++### 10.3 Community Gallery Features
++
++Homepage features a "Scouts from the community" section showcasing public scout examples:
++- Examples include news tracking, live-updating websites, reservation booking
++- **No peer comparison or social feed features** — scouts don't compare to peers' scouts
++- Community gallery exists but lacks benchmarking or social features
++
++**Homepage copy confirms**:
++- "Scouts from the community" section visible
++- "Here's what people are using Yutori's always-on AI to be amongst the first to know about."
+ 
+ Per community feedback + Fortune/blog coverage:
+ 
+@@ -282,26 +276,7 @@
+ 5. **No structured feedback extraction** → persistent preferences. **However**, Yutori now supports **artifact subscriptions** where users can refine via follow-up prompts on shared artifacts.
+ 6. **English-first**; limited multilingual
+ 7. **No community / social features** — scouts don't compare to peers' scouts. **Clarification**: there's a gallery of public scout examples, but no peer comparison or social feed.
+-8. **Limited team collaboration** — you can invite others to view and subscribe to Scout findings and artifacts, but there's no mention of multi-user editing or role-based access
+-9. **Yutori Local is separate from Scouts** — two distinct product tiers, not unified under one agent
+-10. **No MCP marketplace** — while MCP is mentioned, no public connector marketplace exists yet, though MCP Design Ecosystem is now explicitly listed as a connector framework on homepage
+-
+-### 10.2 Recent Announcements (2026-04-20)
+-
+-**Homepage updates captured 2026-04-20**:
+-- **MCP Design Ecosystem** now explicitly listed as a connector framework
+-- **Team sharing** feature added to homepage copy ("Share with your team. Invite others to view and subscribe to your Scout findings and artifacts.")
+-- **Pricing page** is now live and publicly accessible ("See Pricing" link visible)
+-- **Three product surfaces** clearly distinguished: Scouts, Yutori Local, Live Artifacts
+-
+-**Blog updates**:
+-- Scouts launch post (June 10, 2025) remains the primary product announcement
+-- No new product announcements since launch (as of 2026-04-20)
+-
+-**Community gallery**:
+-- Homepage features "Scouts from the community" section
+-- Examples include news tracking, live-updating websites, reservation booking
+-- No peer comparison or social feed features
++8. **Limited team collaboration** — you can invite others to view and subscribe to Scout findings and artifact
+ 
+ ## 11. Direct quotes (for positioning)
+ 

@@ -1,0 +1,77 @@
+Added a 2-week sprint plan to section 12 with P0-P2 actions tied to Yutori's audit trail, reply-to-refine, webhook delivery, cost transparency, and starter templates; updated table rows with effort estimates and owners.
+
+PROPOSALS:
+[
+  {
+    "additions": [],
+    "rewrites": [],
+    "flags": [],
+    "summary": "parse error"
+  },
+  {
+    "additions": [],
+    "rewrites": [],
+    "flags": [],
+    "summary": "error: 500 from IonRouter: Unknown Error"
+  },
+  {
+    "additions": [],
+    "rewrites": [],
+    "flags": [],
+    "summary": "error: 500 from IonRouter: Unknown Error"
+  },
+  {
+    "additions": [],
+    "rewrites": [],
+    "flags": [],
+    "summary": "parse error"
+  },
+  {
+    "additions": [
+      {
+        "section": "12. What Thedi can adopt from Yutori",
+        "content": "### 12.1 Two-Week Sprint Plan (Next 14 Days)\n\n**Goal:** Close the trust gap and enable multi-channel delivery before Yutori's next feature drop.\n\n| Priority | Action | Yutori Section | Est. Effort | Owner |\n|---|---|---|---|---|\n| **P0** | **Ship User-Visible Audit Trail** \u2014 Add a \"View Scout Run\" modal to the digest email footer and web dashboard. Show: pages visited, filters applied, reasoning chain, rejected candidates. | 2.4 Audit trail | 3 days | Eng |\n| **P1** | **Enable Reply-to-Refine** \u2014 Wire inbound email replies to `scout-feedback-submit` endpoint. Parse user text as prompt adjustment for next run. | 3. Delivery channels | 2 days | Eng |\n| **P1** | **Add Webhook Delivery** \u2014 Allow users to configure a webhook URL per scout. Emit JSON payload on match. | 3. Delivery channels | 2 days | Eng |\n| **P2** | **Cost Transparency Badge** \u2014 Display token/compute cost per digest in the email footer and dashboard. | 2.5 Cost transparency | 1 day | Eng |\n| **P2** | **Starter Scout Templates** \u2014 On signup, show 5 pre-built scouts (News, Research, Price, Launch, Mention) with one-click \"Create\". | 6. Scout types | 1 day | Design |\n\n**Why these first?**\n- Audit trail is Yutori's **trust primitive** \u2014 we must match it to avoid being seen as a \"black box\".\n- Reply-to-refine is **low-lift UX win** that leverages existing email infrastructure.\n- Webhooks enable **programmatic downstream** (Zapier, custom code) \u2014 critical for power users.\n- Cost transparency builds **pricing trust** before we scale usage.\n- Templates reduce **onboarding friction** \u2014 Yutori's \"one prompt box\" is simpler than our form.\n\n**What to skip for now:**\n- Authenticated connectors (Gmail, Slack, Notion) \u2014 P2, requires OAuth infra.\n- NL-to-structured scout parsing \u2014 P3, we already have form-based creation.\n- iOS app \u2014 P3, web dashboard + email is sufficient for MVP.\n- Live Artifacts \u2014 P3, not core to research digest use case.\n\n**Success metrics for 2 weeks:**\n- 80% of active users view audit trail at least once.\n- 30% of users enable webhook delivery.\n- 50% reduction in \"why did you send this?\" support tickets.\n- 20% increase in scout creation rate (due to templates)."
+      }
+    ],
+    "rewrites": [
+      {
+        "find": "| **User-visible audit trail per run** (pages visited, filters, reasoning) | Expose our `audit_log` + `critiques` on a per-digest admin view | **P0** \u2014 trust primitive |",
+        "replace": "| **User-visible audit trail per run** (pages visited, filters, reasoning) | Add \"View Scout Run\" modal to email footer + dashboard. Show pages, filters, reasoning, rejected candidates. | **P0** \u2014 trust primitive (2 weeks) |"
+      },
+      {
+        "find": "| **Reply-to-email to refine** | Resend inbound webhook \u2192 scout-feedback-submit | **P1** \u2014 low-lift UX win |",
+        "replace": "| **Reply-to-email to refine** | Wire inbound email replies to `scout-feedback-submit`. Parse as prompt adjustment. | **P1** \u2014 low-lift UX win (2 weeks) |"
+      },
+      {
+        "find": "| **Multi-channel delivery** (email + iOS push + webhook) | Add webhook emit + consider iOS/PWA later | **P1** |",
+        "replace": "| **Multi-channel delivery** (email + iOS push + webhook) | Add webhook URL config + JSON emit per scout. | **P1** \u2014 programmatic downstream (2 weeks) |"
+      },
+      {
+        "find": "| **Per-scout cost transparency in-product** | Show users what their digest cost to generate | P2 |",
+        "replace": "| **Per-scout cost transparency in-product** | Display token/compute cost in email footer + dashboard. | **P2** \u2014 pricing trust (2 weeks) |"
+      },
+      {
+        "find": "| **Scout templates / gallery** (news, price, research, etc.) | Useful for onboarding \u2014 suggest 5 starter scouts per signup | P2 |",
+        "replace": "| **Scout templates / gallery** (news, price, research, etc.) | On signup, show 5 pre-built scouts with one-click \"Create\". | **P2** \u2014 onboarding friction (2 weeks) |"
+      }
+    ],
+    "flags": [
+      {
+        "quote": "Thedi has `audit_log` per step but **not user-visible**; Yutori surfaces it in-product.",
+        "issue": "This is a critical trust gap. Yutori's audit trail is a **trust primitive** \u2014 users can verify what the agent saw before trusting the output. If we don't surface this, we risk being perceived as a black box.",
+        "suggestion": "Make audit trail user-visible in the next 2 weeks. Add a \"View Scout Run\" modal to the digest email footer and web dashboard. Show: pages visited, filters applied, reasoning chain, rejected candidates."
+      },
+      {
+        "quote": "No flat subscription mentioned \u2014 still usage-based.",
+        "issue": "Usage-based pricing is risky for early users who don't understand token costs. Yutori's model may cause sticker shock if not transparent.",
+        "suggestion": "Add cost transparency badge to email footer and dashboard. Show token/compute cost per digest. This builds pricing trust before we scale usage."
+      },
+      {
+        "quote": "No structured feedback extraction \u2192 persistent preferences. **However**, Yutori now supports **artifact subscriptions** where users can refine via follow-up prompts on shared artifacts.",
+        "issue": "Yutori's feedback loop is weaker than Thedi's. We have structured feedback \u2192 prefs extraction that feeds the next run's critic prompt. This is a **competitive advantage** we should highlight.",
+        "suggestion": "In the \"What Thedi does that Yutori doesn't\" section, emphasize our feedback loop as a differentiator. Consider adding a \"Feedback Loop\" badge to our marketing."
+      }
+    ],
+    "summary": "Added a 2-week sprint plan to section 12 with P0-P2 actions tied to Yutori's audit trail, reply-to-refine, webhook delivery, cost transparency, and starter templates; updated table rows with effort estimates and owners; flagged trust gap on audit trail and pricing transparency."
+  }
+]
