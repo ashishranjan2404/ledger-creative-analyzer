@@ -80,7 +80,14 @@ def _build_cfg() -> OrchestratorConfig:
     return cfg
 
 
-def _build_audio_source(observer=None):
+def _build_audio_source(observer=None, get_session_start=None):
+    """Build the live audio source wiring Deepgram + BlackHole loopback.
+
+    *get_session_start*: zero-arg callable returning the session-start monotonic
+    timestamp (``orch._session_start``).  Passed so the audio-error callback can
+    compute ``elapsed = monotonic() - session_start`` rather than a raw monotonic
+    value, keeping the HUD timeline consistent with all other ``on_*`` calls.
+    """
     from .capture.devices import find_blackhole_device, DeviceError
     from .capture.deepgram_stream import DeepgramStream
     from .capture.audio_input import AudioCapture
@@ -93,11 +100,11 @@ def _build_audio_source(observer=None):
     loopback_idx = None
     try:
         loopback_idx = find_blackhole_device()
-    except DeviceError as e:
+    except DeviceError:
         typer.secho(
-            f"BlackHole not found — capturing mic only (system audio will be missed).\n"
-            f"To enable full loopback: brew install blackhole-2ch\n"
-            f"Then restart the session.",
+            "BlackHole not found — capturing mic only (system audio will be missed).\n"
+            "To enable full loopback: brew install blackhole-2ch\n"
+            "Then restart the session.",
             fg=typer.colors.YELLOW,
             err=True,
         )
@@ -124,11 +131,14 @@ def _build_audio_source(observer=None):
     src = _LiveSource()
 
     # Wire the audio-disconnect callback to the HUD observer if available.
+    # Use get_session_start() so we report session-relative elapsed seconds,
+    # not a raw monotonic value (which would be millions of seconds since boot).
     if observer is not None:
         import time as _time
 
         def _on_audio_error(reason: str) -> None:
-            elapsed = _time.monotonic()
+            session_start = get_session_start() if get_session_start is not None else _time.monotonic()
+            elapsed = _time.monotonic() - session_start
             observer.on_audio_disconnect(at=elapsed, reason=reason)
 
         stream.on_error(_on_audio_error)
@@ -192,9 +202,17 @@ def start(
         from .hud.renderer import TkinterHudRenderer
         renderer = TkinterHudRenderer(observer=observer)
 
-    audio_source = _build_audio_source(observer=observer) if audio else None
+    # _session_start_ref is a one-element list used as a mutable cell so that
+    # the audio-error callback (built inside _build_audio_source) can read
+    # orch._session_start after orch is constructed, without a circular dependency.
+    _session_start_ref: list[float] = []
+    audio_source = _build_audio_source(
+        observer=observer,
+        get_session_start=lambda: _session_start_ref[0] if _session_start_ref else time.monotonic(),
+    ) if audio else None
 
     orch = Orchestrator(session=session, client=client, config=cfg, audio_source=audio_source, observer=observer)
+    _session_start_ref.append(orch._session_start)
 
     start_mono = time.monotonic()
 
