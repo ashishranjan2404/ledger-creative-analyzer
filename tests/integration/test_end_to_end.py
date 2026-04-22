@@ -1,6 +1,7 @@
 import asyncio
 import json
 import pytest
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import AsyncMock
 from spec_lesson.orchestrator import Orchestrator, OrchestratorConfig
@@ -55,9 +56,16 @@ async def test_end_to_end_fixture_run(tmp_path: Path):
     assert "ADHD voice assistant" in claude_md
     assert "1.5h hard cap" in claude_md
 
-    # assert trigger was logged
-    triggers = (session.state_dir / "triggers.log").read_text()
-    assert "build that" in triggers.lower()
+    # R8 #9 (strong): verify trigger log has ISO timestamp | phrase format
+    trigger_lines = (session.state_dir / "triggers.log").read_text().strip().splitlines()
+    assert len(trigger_lines) >= 1, "Expected at least one trigger log entry"
+    for line in trigger_lines:
+        parts = line.split(" | ", maxsplit=1)
+        assert len(parts) == 2, f"Malformed trigger log line (missing ' | ' separator): {line!r}"
+        datetime.fromisoformat(parts[0])  # raises if timestamp is not valid ISO
+        assert "build that" in parts[1].lower(), (
+            f"Trigger phrase must be in the phrase field (after ' | '), got: {parts[1]!r}"
+        )
 
     # assert JSONL transcript persisted all finals
     jsonl = session.transcript_jsonl.read_text().strip().splitlines()

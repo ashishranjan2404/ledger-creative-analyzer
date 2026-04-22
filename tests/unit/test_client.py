@@ -30,9 +30,17 @@ async def test_complete_calls_sdk_with_caching_on_transcript():
 
     block = system[0]
     assert block["type"] == "text"
-    # Both the system prompt and cached context appear in the merged text
-    assert "You are a helpful summarizer." in block["text"]
-    assert "long rolling transcript here" in block["text"]
+    # R8 #8 (strong): verify ORDER — system prompt precedes separator precedes cached_context
+    block_text = block["text"]
+    sep_idx = block_text.index("---")
+    sys_part = block_text[:sep_idx]
+    ctx_part = block_text[sep_idx:]
+    assert "You are a helpful summarizer." in sys_part, (
+        "System prompt must appear BEFORE the '---' separator"
+    )
+    assert "long rolling transcript here" in ctx_part, (
+        "Cached context must appear AFTER the '---' separator"
+    )
     # The block carries cache control
     assert block.get("cache_control", {}).get("type") == "ephemeral"
 

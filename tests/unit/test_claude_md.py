@@ -6,9 +6,14 @@ def test_creates_file_with_section_if_missing(tmp_path: Path):
     w = ClaudeMdWriter(p)
     w.write_managed_section("hello body")
     text = p.read_text()
-    assert "<!-- spec-lesson:start -->" in text
-    assert "hello body" in text
-    assert "<!-- spec-lesson:end -->" in text
+    # R8 #3 (strong): verify marker ORDER and that body is BETWEEN markers
+    start_idx = text.index("<!-- spec-lesson:start -->")
+    end_idx   = text.index("<!-- spec-lesson:end -->")
+    assert start_idx < end_idx, "start marker must precede end marker"
+    block = text[start_idx:end_idx]
+    assert "hello body" in block, "body must appear between markers, not outside"
+    assert text.count("<!-- spec-lesson:start -->") == 1
+    assert text.count("<!-- spec-lesson:end -->") == 1
 
 def test_rewrites_section_preserving_surrounding_content(tmp_path: Path):
     p = tmp_path / "CLAUDE.md"
@@ -18,11 +23,16 @@ def test_rewrites_section_preserving_surrounding_content(tmp_path: Path):
     w = ClaudeMdWriter(p)
     w.write_managed_section("NEW DISTILLATION")
     text = p.read_text()
-    assert "# Project" in text
-    assert "Some rules." in text
-    assert "Footer." in text
-    assert "NEW DISTILLATION" in text
-    assert "OLD" not in text
+    # R8 #4 (strong): verify structural ORDER — header before block, footer after block
+    start_idx = text.index("<!-- spec-lesson:start -->")
+    end_idx   = text.index("<!-- spec-lesson:end -->")
+    assert text.index("# Project") < start_idx, "header must precede managed block"
+    assert text.index("Footer.")   > end_idx,   "footer must follow managed block"
+    block_inner = text[start_idx:end_idx]
+    assert "NEW DISTILLATION" in block_inner, "new content must be inside the managed block"
+    assert "OLD" not in text, "old content must be fully replaced"
+    assert text.count("<!-- spec-lesson:start -->") == 1
+    assert text.count("<!-- spec-lesson:end -->") == 1
 
 def test_appends_section_when_file_exists_but_no_markers(tmp_path: Path):
     p = tmp_path / "CLAUDE.md"
