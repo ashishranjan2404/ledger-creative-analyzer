@@ -17,6 +17,8 @@ app = typer.Typer(help="spec-lesson: ADHD live meeting assistant", no_args_is_he
 def _canned_response(*, model, system, cached_context, fresh_input, max_tokens) -> str:
     if "thread" in system.lower():
         return '{"current_topic":"fake","drift":"on","drift_from":""}'
+    if "respond in real time" in system.lower():
+        return '{"candidates":["ok","understood","can you clarify?"]}'
     return json.dumps({
         "topic": "(fake) captured session",
         "decisions": ["decision from fake api"],
@@ -43,15 +45,51 @@ def _build_cfg() -> OrchestratorConfig:
     return cfg
 
 
+def _build_audio_source():
+    from .capture.devices import find_blackhole_device, DeviceError
+    from .capture.deepgram_stream import DeepgramStream
+    from .capture.audio_input import AudioCapture
+
+    dg_key = os.environ.get("DEEPGRAM_API_KEY")
+    if not dg_key:
+        typer.secho("DEEPGRAM_API_KEY is not set. Get one at https://deepgram.com", fg=typer.colors.RED)
+        raise typer.Exit(1)
+
+    loopback_idx = None
+    try:
+        loopback_idx = find_blackhole_device()
+    except DeviceError as e:
+        typer.secho(f"Warning: {e}\nProceeding with mic-only capture.", fg=typer.colors.YELLOW)
+
+    stream = DeepgramStream(api_key=dg_key)
+    cap = AudioCapture(sink=lambda pcm: None, loopback_index=loopback_idx)
+
+    class _LiveSource:
+        def on_utterance(self, cb):
+            stream.on_utterance(cb)
+        def start(self):
+            stream.start()
+            cap._sink = stream.send_audio  # rewire after stream is up
+            cap.start()
+        def stop(self):
+            cap.stop()
+            stream.stop()
+
+    return _LiveSource()
+
+
 @app.command()
 def start(
-    transcript_stdin: bool = typer.Option(False, "--transcript-stdin", help="Read JSONL utterances from stdin (Plan 1)"),
+    transcript_stdin: bool = typer.Option(False, "--transcript-stdin", help="Read JSONL utterances from stdin"),
+    audio: bool = typer.Option(False, "--audio", help="Capture mic + BlackHole loopback, transcribe via Deepgram"),
 ):
     """Start a spec-lesson session in the current directory."""
-    if not transcript_stdin:
+    if transcript_stdin and audio:
+        typer.secho("--transcript-stdin and --audio are mutually exclusive", fg=typer.colors.RED)
+        raise typer.Exit(2)
+    if not (transcript_stdin or audio):
         typer.secho(
-            "Plan 1 has no audio capture. Run with --transcript-stdin and pipe utterances.\n"
-            "Live audio ships in Plan 2.",
+            "Choose a source: --audio (live) or --transcript-stdin (Plan 1 stdin).",
             fg=typer.colors.YELLOW,
         )
         raise typer.Exit(2)
@@ -60,35 +98,39 @@ def start(
     session = Session.new(project_dir=project_dir)
     client = _build_client()
     cfg = _build_cfg()
-    orch = Orchestrator(session=session, client=client, config=cfg)
 
-    async def feed_stdin():
-        loop = asyncio.get_running_loop()
-        reader = asyncio.StreamReader()
-        protocol = asyncio.StreamReaderProtocol(reader)
-        await loop.connect_read_pipe(lambda: protocol, sys.stdin)
-        while True:
-            line = await reader.readline()
-            if not line:
-                break
-            line_s = line.decode("utf-8").strip()
-            if not line_s:
-                continue
-            try:
-                payload = json.loads(line_s)
-            except json.JSONDecodeError:
-                continue
-            orch.ingest(payload)
+    audio_source = _build_audio_source() if audio else None
+    orch = Orchestrator(session=session, client=client, config=cfg, audio_source=audio_source)
 
-    async def main():
-        await asyncio.gather(orch.run(), feed_stdin())
+    if transcript_stdin:
+        async def feed_stdin():
+            loop = asyncio.get_running_loop()
+            reader = asyncio.StreamReader()
+            protocol = asyncio.StreamReaderProtocol(reader)
+            await loop.connect_read_pipe(lambda: protocol, sys.stdin)
+            while True:
+                line = await reader.readline()
+                if not line:
+                    break
+                line_s = line.decode("utf-8").strip()
+                if not line_s:
+                    continue
+                try:
+                    payload = json.loads(line_s)
+                except json.JSONDecodeError:
+                    continue
+                orch.ingest(payload)
 
-    asyncio.run(main())
+        async def main():
+            await asyncio.gather(orch.run(), feed_stdin())
+
+        asyncio.run(main())
+    else:
+        asyncio.run(orch.run())
 
 
 @app.command()
 def status():
-    """Report whether a spec-lesson daemon is running in the current directory."""
     pid_file = Path.cwd() / ".spec-lesson" / "daemon.pid"
     if not pid_file.exists():
         typer.echo("spec-lesson: not running")
@@ -104,7 +146,6 @@ def status():
 
 @app.command()
 def stop():
-    """Request graceful shutdown of the running daemon."""
     pid_file = Path.cwd() / ".spec-lesson" / "daemon.pid"
     if not pid_file.exists():
         typer.echo("spec-lesson: not running")
