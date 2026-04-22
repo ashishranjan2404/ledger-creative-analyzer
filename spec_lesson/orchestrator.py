@@ -35,6 +35,13 @@ class OrchestratorConfig:
     thread_interval: float = 120.0
     context_interval: float = 300.0
     max_seconds: float = 5400.0
+    pause_check_interval: float = 0.5
+    pause_threshold: float = 1.2
+    # COST-2: gate ImmediateTier — require at least this many utterances before
+    # the first fire and enforce a minimum wall-clock interval between fires to
+    # prevent a burst of calls during rapid back-and-forth exchanges.
+    immediate_min_utterances: int = 3
+    immediate_min_interval: float = 10.0  # seconds between consecutive fires
 
 
 class Orchestrator:
@@ -70,10 +77,14 @@ class Orchestrator:
         self._lifecycle.on_shutdown(self._on_shutdown)
 
         # pause detection for Immediate tier
-        self._pause_check_interval = 0.5
-        self._pause_threshold = 1.2
+        self._pause_check_interval = config.pause_check_interval
+        self._pause_threshold = config.pause_threshold
         self._last_immediate_for_ts: Optional[float] = None
         self._utterance_received_monotonic = time.monotonic()
+        # COST-2: rate-limiting state for Immediate tier
+        self._immediate_min_utterances = config.immediate_min_utterances
+        self._immediate_min_interval = config.immediate_min_interval
+        self._last_immediate_fire_monotonic: float = 0.0
 
         # RES-2 / Fix 7: shutdown guard — set to True as the FIRST action
         # inside _on_shutdown so _pause_watcher stops before teardown begins.
@@ -171,11 +182,19 @@ class Orchestrator:
             latest = self.buffer.latest_timestamp()
             if latest is None:
                 continue
+            # COST-2: require a minimum number of utterances before the first fire.
+            if len(self.buffer.all()) < self._immediate_min_utterances:
+                continue
             if self._last_immediate_for_ts == latest:
                 continue
-            elapsed = time.monotonic() - self._utterance_received_monotonic
+            # COST-2: enforce a minimum wall-clock interval between fires.
+            now_mono = time.monotonic()
+            if now_mono - self._last_immediate_fire_monotonic < self._immediate_min_interval:
+                continue
+            elapsed = now_mono - self._utterance_received_monotonic
             if elapsed >= self._pause_threshold:
                 self._last_immediate_for_ts = latest
+                self._last_immediate_fire_monotonic = now_mono
                 try:
                     await self._run_immediate()
                 except Exception as e:
