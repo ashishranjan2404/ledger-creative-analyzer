@@ -10,7 +10,6 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional, Protocol
 
@@ -134,10 +133,7 @@ class Orchestrator:
                 asyncio.create_task(self._context_runner.trigger_now())
 
     def _log_trigger(self, u: Utterance) -> None:
-        line = f"{datetime.now(timezone.utc).isoformat()} | {u.text}\n"
-        self.session.triggers_log.parent.mkdir(parents=True, exist_ok=True)
-        with self.session.triggers_log.open("a", encoding="utf-8") as fh:
-            fh.write(line)
+        self.trigger.log_fire(self.session.triggers_log, u.text)
         if self._observer is not None:
             try:
                 self._observer.on_trigger(at=u.timestamp, phrase=u.text)

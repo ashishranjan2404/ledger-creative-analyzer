@@ -7,6 +7,8 @@ Deepgram re-transcriptions.
 """
 import re
 import time
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 _TRIGGER_PATTERN = re.compile(
@@ -47,3 +49,10 @@ class TriggerDetector:
             return False
         self._last_fire_monotonic = mono_now
         return True
+
+    def log_fire(self, log_path: Path, phrase: str) -> None:
+        """Append a trigger fire to the given log file with UTC timestamp."""
+        line = f"{datetime.now(timezone.utc).isoformat()} | {phrase}\n"
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("a", encoding="utf-8") as fh:
+            fh.write(line)

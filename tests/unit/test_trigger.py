@@ -1,7 +1,36 @@
 import time
+from pathlib import Path
 import pytest
 from unittest.mock import patch
 from spec_lesson.trigger.detector import TriggerDetector
+
+
+def test_log_fire_creates_file_and_appends(tmp_path: Path):
+    det = TriggerDetector()
+    log = tmp_path / "triggers.log"
+    det.log_fire(log, "ok claude build that")
+    det.log_fire(log, "ok claude build this")
+    lines = log.read_text().splitlines()
+    assert len(lines) == 2
+    assert "build that" in lines[0]
+    assert "build this" in lines[1]
+
+
+def test_log_fire_creates_parent_dirs(tmp_path: Path):
+    det = TriggerDetector()
+    log = tmp_path / "nested" / "sub" / "triggers.log"
+    det.log_fire(log, "test phrase")
+    assert log.exists()
+
+
+def test_log_fire_includes_utc_timestamp(tmp_path: Path):
+    det = TriggerDetector()
+    log = tmp_path / "triggers.log"
+    det.log_fire(log, "ok claude build it")
+    content = log.read_text()
+    # UTC ISO timestamp should include 'T' and '+00:00'
+    assert "T" in content
+    assert "|" in content
 
 @pytest.mark.parametrize("text", [
     "OK Claude, build that",
