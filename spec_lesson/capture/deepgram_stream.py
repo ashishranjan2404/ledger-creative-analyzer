@@ -100,7 +100,7 @@ class DeepgramStream:
                         _clean_exit = True
                         break
                     try:
-                        self.process_message(msg)
+                        self._decode_deepgram_result(msg)
                     except Exception:
                         # one bad message shouldn't kill the pump
                         continue
@@ -124,7 +124,7 @@ class DeepgramStream:
                 except Exception:
                     pass
 
-    def process_message(self, result: Any) -> Optional[dict]:
+    def _decode_deepgram_result(self, result: Any) -> Optional[dict]:
         """Convert a Deepgram result into an utterance dict (or None) and fire the callback."""
         if not hasattr(result, "is_final"):
             return None

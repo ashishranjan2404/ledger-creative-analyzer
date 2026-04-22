@@ -40,8 +40,8 @@ def test_on_utterance_callback_invoked_on_final_transcription():
     stream.on_utterance(lambda u: received.append(u))
     stream.start()
 
-    # Process one message directly (tests process_message in isolation)
-    utterance = stream.process_message(fake_result)
+    # Process one message directly (tests _decode_deepgram_result in isolation)
+    utterance = stream._decode_deepgram_result(fake_result)
     assert utterance is not None
     assert utterance["text"] == "hello world"
     assert utterance["is_final"] is True
@@ -65,7 +65,7 @@ def test_interim_transcripts_are_ignored():
     fake_result.channel.alternatives = [MagicMock(transcript="partial")]
     fake_result.start = 0.5
 
-    utterance = stream.process_message(fake_result)
+    utterance = stream._decode_deepgram_result(fake_result)
     assert utterance is None
 
     stream.stop()

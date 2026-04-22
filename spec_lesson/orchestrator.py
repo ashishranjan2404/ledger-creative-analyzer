@@ -11,7 +11,7 @@ import logging
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional, Protocol
+from typing import Any, Callable, Optional, Protocol
 
 from .lifecycle import SessionLifecycle
 from .session import Session
@@ -31,6 +31,9 @@ from .hud.observer import HudObserver
 log = logging.getLogger(__name__)
 
 
+UtteranceCallback = Callable[[dict[str, Any]], None]
+
+
 class AudioSource(Protocol):
     """Structural interface for any audio input source.
 
@@ -38,7 +41,7 @@ class AudioSource(Protocol):
     ``start()`` to begin capture, and ``stop()`` to tear down cleanly.
     ``cli._LiveSource`` and test mocks satisfy this protocol.
     """
-    def on_utterance(self, cb) -> None: ...
+    def on_utterance(self, cb: UtteranceCallback) -> None: ...
     def start(self) -> None: ...
     def stop(self) -> None: ...
 
@@ -118,7 +121,7 @@ class Orchestrator:
         self.buffer.append(u)
         self.transcript_writer.append(u)
         if u.is_final and self.trigger.check(u.text, now=u.timestamp):
-            self._log_trigger(u)
+            self._record_trigger_fire(u)
             # ingest() may be called from a non-loop thread (e.g. the
             # DeepgramStream pump thread).  asyncio.create_task() requires a
             # running event loop on the calling thread and will raise
@@ -132,11 +135,12 @@ class Orchestrator:
                 # that runs inside a coroutine on the loop thread).
                 asyncio.create_task(self._context_runner.trigger_now())
 
-    def _log_trigger(self, u: Utterance) -> None:
+    def _record_trigger_fire(self, u: Utterance) -> None:
         self.trigger.log_fire(self.session.triggers_log, u.text)
         if self._observer is not None:
             try:
-                self._observer.on_trigger(at=u.timestamp, phrase=u.text)
+                elapsed = time.monotonic() - self._session_start
+                self._observer.on_trigger(at=elapsed, phrase=u.text)
             except Exception as e:
                 log.warning("observer.on_trigger failed: %s", e)
 
