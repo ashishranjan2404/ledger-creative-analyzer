@@ -3,6 +3,13 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ..tiers.prompts import (
+    POLISH_SECTION_DECISIONS,
+    POLISH_SECTION_REQUIREMENTS,
+    POLISH_SECTION_OPEN_QUESTIONS,
+    POLISH_SECTION_ACTION_ITEMS,
+)
+
 
 @dataclass
 class SessionNote:
@@ -28,12 +35,8 @@ _TITLE_RE = re.compile(r"^# (.+?)$", re.MULTILINE)
 _DATE_RE = re.compile(r"^date:\s*(.+?)$", re.MULTILINE)
 _TOPICS_RE = re.compile(r"^topics:\s*\[(.*?)\]", re.MULTILINE)
 
-_SECTION_HEADERS = {
-    "decisions": "Decisions",
-    "requirements": "Requirements",
-    "open_questions": "Open questions",
-    "action_items": "Action items",
-}
+# Section header names are derived from the prompt constants so that any
+# rename in prompts.py is automatically reflected in the parser.
 
 
 def _parse_bulleted_section(body: str, header: str) -> list[str]:
@@ -80,8 +83,8 @@ def parse_session(path: Path) -> "SessionNote | None":
         date=date,
         title=title,
         topics=topics,
-        decisions=_parse_bulleted_section(text, "Decisions"),
-        requirements=_parse_bulleted_section(text, "Requirements"),
-        open_questions=_parse_bulleted_section(text, "Open questions"),
-        action_items=_parse_bulleted_section(text, "Action items"),
+        decisions=_parse_bulleted_section(text, POLISH_SECTION_DECISIONS),
+        requirements=_parse_bulleted_section(text, POLISH_SECTION_REQUIREMENTS),
+        open_questions=_parse_bulleted_section(text, POLISH_SECTION_OPEN_QUESTIONS),
+        action_items=_parse_bulleted_section(text, POLISH_SECTION_ACTION_ITEMS),
     )

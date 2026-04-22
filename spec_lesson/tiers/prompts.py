@@ -1,3 +1,11 @@
+# Canonical section headings written by PolishTier and parsed by rollup collector.
+# Both must reference these constants so that renaming one header updates both ends.
+POLISH_SECTION_SUMMARY = "Summary"
+POLISH_SECTION_DECISIONS = "Decisions"
+POLISH_SECTION_REQUIREMENTS = "Requirements"
+POLISH_SECTION_OPEN_QUESTIONS = "Open questions"
+POLISH_SECTION_ACTION_ITEMS = "Action items"
+
 CONTEXT_SYSTEM = """You are spec-lesson, a live distillation engine for a voice meeting.
 
 You receive (A) the previous distillation of the entire session so far, and (B) new transcript since that distillation.
@@ -39,7 +47,7 @@ Output strict JSON:
 JSON ONLY.
 """
 
-POLISH_SYSTEM = """You are writing the final Obsidian-style note for a meeting session that just ended.
+POLISH_SYSTEM = f"""You are writing the final Obsidian-style note for a meeting session that just ended.
 
 Given:
 - The final Context-tier distillation
@@ -55,19 +63,19 @@ topics: [tag1, tag2]
 
 # [Short title]
 
-## Summary
+## {POLISH_SECTION_SUMMARY}
 [2-3 sentence summary]
 
-## Decisions
+## {POLISH_SECTION_DECISIONS}
 - ...
 
-## Requirements
+## {POLISH_SECTION_REQUIREMENTS}
 - ...
 
-## Open questions
+## {POLISH_SECTION_OPEN_QUESTIONS}
 - ...
 
-## Action items
+## {POLISH_SECTION_ACTION_ITEMS}
 - [ ] ...
 
 OUTPUT THE MARKDOWN DOCUMENT ONLY.
