@@ -30,8 +30,8 @@ class ThreadTier:
         self._client = client
         self._buffer = buffer
 
-    async def run(self, baseline_topic: str, now: float) -> DriftState:
-        tail = self._buffer.tail(seconds=self.TAIL_SECONDS, now=now)
+    async def run(self, baseline_topic: str, audio_ts: float) -> DriftState:
+        tail = self._buffer.tail(seconds=self.TAIL_SECONDS, reference_ts=audio_ts)
         tail_text = "\n".join(
             f"[{u.timestamp:.1f}] {u.speaker}: {u.text}" for u in tail
         )

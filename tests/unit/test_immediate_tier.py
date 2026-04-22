@@ -13,7 +13,7 @@ async def test_returns_three_suggestions():
     client = AsyncMock()
     client.complete = AsyncMock(return_value='{"candidates":["Deepgram is faster","Whisper is local","What are the latency needs?"]}')
     tier = ImmediateTier(client=client, buffer=buf)
-    out = await tier.run(now=10.0)
+    out = await tier.run(audio_ts=10.0)
     assert isinstance(out, ResponseSuggestions)
     assert out.candidates == [
         "Deepgram is faster",
@@ -32,7 +32,7 @@ async def test_malformed_json_returns_empty():
     client = AsyncMock()
     client.complete = AsyncMock(return_value="not json")
     tier = ImmediateTier(client=client, buffer=buf)
-    out = await tier.run(now=2.0)
+    out = await tier.run(audio_ts=2.0)
     assert out.candidates == []
 
 @pytest.mark.asyncio
@@ -42,5 +42,5 @@ async def test_trims_candidates_to_three_if_more_returned():
     client = AsyncMock()
     client.complete = AsyncMock(return_value='{"candidates":["a","b","c","d","e"]}')
     tier = ImmediateTier(client=client, buffer=buf)
-    out = await tier.run(now=2.0)
+    out = await tier.run(audio_ts=2.0)
     assert out.candidates == ["a", "b", "c"]

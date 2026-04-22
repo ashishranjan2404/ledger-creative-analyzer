@@ -29,7 +29,7 @@ async def test_context_tier_wraps_transcript_in_xml():
         return_value='{"topic":"t","decisions":[],"requirements":[],"open_questions":[],"recent_verbatim":""}'
     )
     tier = ContextTier(client=client, buffer=buf)
-    await tier.run(now=2.0)
+    await tier.run(audio_ts=2.0)
     call = client.complete.await_args.kwargs
     assert "<transcript>" in call["fresh_input"], (
         "SEC-7: ContextTier.fresh_input must contain <transcript> opening tag"
@@ -56,7 +56,7 @@ async def test_immediate_tier_wraps_transcript_in_xml():
     client = AsyncMock()
     client.complete = AsyncMock(return_value='{"candidates":["yes","no","maybe"]}')
     tier = ImmediateTier(client=client, buffer=buf)
-    await tier.run(now=10.0)
+    await tier.run(audio_ts=10.0)
     call = client.complete.await_args.kwargs
     fi = call["fresh_input"]
     assert "<transcript>" in fi and "</transcript>" in fi, (
@@ -78,7 +78,7 @@ async def test_thread_tier_wraps_transcript_in_xml():
         return_value='{"current_topic":"deployment","drift":"on","drift_from":""}'
     )
     tier = ThreadTier(client=client, buffer=buf)
-    await tier.run(baseline_topic="engineering", now=10.0)
+    await tier.run(baseline_topic="engineering", audio_ts=10.0)
     call = client.complete.await_args.kwargs
     fi = call["fresh_input"]
     assert "<transcript>" in fi and "</transcript>" in fi, (
@@ -120,7 +120,7 @@ async def test_immediate_tier_empty_buffer_uses_silence_tag():
     client = AsyncMock()
     client.complete = AsyncMock(return_value='{"candidates":[]}')
     tier = ImmediateTier(client=client, buffer=buf)
-    await tier.run(now=0.0)
+    await tier.run(audio_ts=0.0)
     call = client.complete.await_args.kwargs
     fi = call["fresh_input"]
     assert "<transcript>" in fi, "Empty tail must still use <transcript> wrapper"

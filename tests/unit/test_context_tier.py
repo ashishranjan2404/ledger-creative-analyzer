@@ -18,7 +18,7 @@ async def test_first_run_uses_empty_previous_distillation():
     client.complete = AsyncMock(return_value=fake_json)
 
     tier = ContextTier(client=client, buffer=buf)
-    out = await tier.run(now=3.0)
+    out = await tier.run(audio_ts=3.0)
     assert out.topic == "X/Y"
     assert "X" in out.decisions
     assert "Y" in out.requirements
@@ -38,9 +38,9 @@ async def test_second_run_passes_previous_distillation_as_cached_context():
     client = AsyncMock()
     client.complete = AsyncMock(side_effect=[fake_json_1, fake_json_2])
     tier = ContextTier(client=client, buffer=buf)
-    await tier.run(now=2.0)
+    await tier.run(audio_ts=2.0)
     buf.append(_u(3.0, "more"))
-    merged = await tier.run(now=4.0)
+    merged = await tier.run(audio_ts=4.0)
     # append-only merge: d1 from first run preserved even if LLM "forgot" it
     assert "d1" in merged.decisions
     assert "d2" in merged.decisions
@@ -71,7 +71,7 @@ async def test_utterances_arriving_during_llm_call_are_not_skipped():
     client.complete = AsyncMock(side_effect=side_effect)
 
     tier = ContextTier(client=client, buffer=buf)
-    await tier.run(now=2.0)
+    await tier.run(audio_ts=2.0)
 
     # After run 1, boundary_ts was snapshotted at 1.0 (before the late utterance).
     # _last_timestamp_processed must be 1.0, not 5.0.
@@ -81,7 +81,7 @@ async def test_utterances_arriving_during_llm_call_are_not_skipped():
 
     # Run 2: the late utterance at t=5.0 must appear in the new_utterances.
     buf.append(_u(6.0, "third"))
-    merged = await tier.run(now=7.0)
+    merged = await tier.run(audio_ts=7.0)
 
     # The second LLM call's fresh_input must contain the "arrived during LLM call" text.
     second_call_kwargs = client_calls[1]
@@ -105,9 +105,9 @@ async def test_context_cached_context_excludes_recent_verbatim():
     client.complete = AsyncMock(side_effect=[fake_json_1, fake_json_2])
 
     tier = ContextTier(client=client, buffer=buf)
-    await tier.run(now=1.0)  # first run: sets last.recent_verbatim to volatile_verbatim
+    await tier.run(audio_ts=1.0)  # first run: sets last.recent_verbatim to volatile_verbatim
     buf.append(_u(2.0, "y"))
-    await tier.run(now=2.0)  # second run
+    await tier.run(audio_ts=2.0)  # second run
 
     second_call = client.complete.await_args_list[1].kwargs
     assert volatile_verbatim not in second_call["cached_context"], (
@@ -124,5 +124,5 @@ async def test_run_tolerates_malformed_json_and_returns_previous():
     client = AsyncMock()
     client.complete = AsyncMock(return_value="this is not json")
     tier = ContextTier(client=client, buffer=buf)
-    out = await tier.run(now=2.0)
+    out = await tier.run(audio_ts=2.0)
     assert out.topic == "(session just started)"

@@ -33,11 +33,11 @@ class ContextTier:
     def last(self) -> Distillation:
         return self._last
 
-    async def run(self, now: float) -> Distillation:
+    async def run(self, audio_ts: float) -> Distillation:
         async with self._run_lock:
-            return await self._run_locked(now)
+            return await self._run_locked(audio_ts)
 
-    async def _run_locked(self, now: float) -> Distillation:
+    async def _run_locked(self, audio_ts: float) -> Distillation:
         # BUG-D-1: snapshot the cursor BEFORE the await so that any utterances
         # that arrive while the LLM call is in-flight are NOT silently skipped.
         # We advance _last_timestamp_processed only to this snapshot; the next

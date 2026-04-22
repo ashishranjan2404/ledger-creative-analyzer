@@ -25,8 +25,8 @@ class ImmediateTier:
         self._client = client
         self._buffer = buffer
 
-    async def run(self, now: float) -> ResponseSuggestions:
-        tail = self._buffer.tail(seconds=self.TAIL_SECONDS, now=now)
+    async def run(self, audio_ts: float) -> ResponseSuggestions:
+        tail = self._buffer.tail(seconds=self.TAIL_SECONDS, reference_ts=audio_ts)
         tail_text = "\n".join(f"[{u.timestamp:.1f}] {u.speaker}: {u.text}" for u in tail)
         cached = "LAST 90 SECONDS:"
         # SEC-7: wrap transcript content in XML tags to delimit user-supplied

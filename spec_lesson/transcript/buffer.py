@@ -30,8 +30,14 @@ class RollingTranscript:
     def since(self, timestamp: float) -> list[Utterance]:
         return [u for u in self._utterances if u.timestamp > timestamp]
 
-    def tail(self, seconds: float, now: float) -> list[Utterance]:
-        cutoff = now - seconds
+    def tail(self, seconds: float, reference_ts: float) -> list[Utterance]:
+        """Return utterances within *seconds* before *reference_ts*.
+
+        *reference_ts* is a neutral reference point — it may be an audio-stream
+        timestamp (from the tier callers) or a wall-clock value; the semantic is
+        simply ``utterance.timestamp >= reference_ts - seconds``.
+        """
+        cutoff = reference_ts - seconds
         return [u for u in self._utterances if u.timestamp >= cutoff]
 
     def latest_timestamp(self) -> Optional[float]:

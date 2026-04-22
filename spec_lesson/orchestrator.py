@@ -202,7 +202,7 @@ class Orchestrator:
         latest = self.buffer.latest_timestamp()
         if latest is None:
             return
-        dist = await self.context_tier.run(now=latest)
+        dist = await self.context_tier.run(audio_ts=latest)
         self.claude_md_writer.write_managed_section(dist.render_markdown())
         if self._observer is not None:
             elapsed = time.monotonic() - self._session_start
@@ -220,7 +220,7 @@ class Orchestrator:
         if latest is None:
             return
         baseline = self.context_tier.last.topic
-        drift_state = await self.thread_tier.run(baseline_topic=baseline, now=latest)
+        drift_state = await self.thread_tier.run(baseline_topic=baseline, audio_ts=latest)
         log.info("thread tier ran")
         if self._observer is not None:
             elapsed = time.monotonic() - self._session_start
@@ -238,7 +238,7 @@ class Orchestrator:
         latest = self.buffer.latest_timestamp()
         if latest is None:
             return
-        out = await self.immediate_tier.run(now=latest)
+        out = await self.immediate_tier.run(audio_ts=latest)
         log.info("immediate: %s", out.candidates)
         if self._observer is not None:
             elapsed = time.monotonic() - self._session_start
@@ -317,7 +317,7 @@ class Orchestrator:
             # that an Anthropic 500 at shutdown doesn't prevent session.md from
             # being written.  Fall back to the last successful distillation.
             try:
-                dist = await self.context_tier.run(now=latest)
+                dist = await self.context_tier.run(audio_ts=latest)
             except Exception as e:
                 log.warning("final context tier run failed at shutdown: %s — using last cached distillation", e)
                 dist = self.context_tier.last  # last successful distillation

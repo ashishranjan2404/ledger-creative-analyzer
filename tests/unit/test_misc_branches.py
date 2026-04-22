@@ -38,7 +38,7 @@ async def test_context_tier_returns_empty_distillation_when_buffer_empty():
     client = AsyncMock()
     tier = ContextTier(client=client, buffer=buf)
     # Buffer is empty — no LLM call should be made.
-    out = await tier.run(now=0.0)
+    out = await tier.run(audio_ts=0.0)
     client.complete.assert_not_called()
     assert out.topic == "(session just started)"
 

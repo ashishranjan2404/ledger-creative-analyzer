@@ -31,7 +31,7 @@ async def test_concurrent_run_serializes():
     tier = ContextTier(client=client, buffer=buf)
 
     # Fire two concurrent runs — without the lock these would interleave
-    await asyncio.gather(tier.run(now=1.0), tier.run(now=1.0))
+    await asyncio.gather(tier.run(audio_ts=1.0), tier.run(audio_ts=1.0))
 
     # Must be strictly sequential: start, end, start, end — never start, start, end, end
     assert call_log == ["start", "end", "start", "end"], (

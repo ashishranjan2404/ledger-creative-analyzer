@@ -18,7 +18,7 @@ async def test_detects_on_topic():
         return_value='{"current_topic":"API design","drift":"on","drift_from":""}'
     )
     tier = ThreadTier(client=client, buffer=buf)
-    state = await tier.run(baseline_topic="API design", now=2.0)
+    state = await tier.run(baseline_topic="API design", audio_ts=2.0)
     assert state.drift == "on"
     assert state.current_topic == "API design"
     assert state.drift_from == ""
@@ -37,7 +37,7 @@ async def test_detects_drifting():
         return_value='{"current_topic":"dinner plans","drift":"drifting","drift_from":"API design"}'
     )
     tier = ThreadTier(client=client, buffer=buf)
-    state = await tier.run(baseline_topic="API design", now=2.0)
+    state = await tier.run(baseline_topic="API design", audio_ts=2.0)
     assert state.drift == "drifting"
     assert state.drift_from == "API design"
 
@@ -49,5 +49,5 @@ async def test_malformed_json_returns_unknown_state():
     client = AsyncMock()
     client.complete = AsyncMock(return_value="not json")
     tier = ThreadTier(client=client, buffer=buf)
-    state = await tier.run(baseline_topic="X", now=2.0)
+    state = await tier.run(baseline_topic="X", audio_ts=2.0)
     assert state.drift == "unknown"

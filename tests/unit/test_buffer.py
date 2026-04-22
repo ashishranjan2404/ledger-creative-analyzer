@@ -26,8 +26,8 @@ def test_tail_returns_utterances_within_window():
     buf.append(_u(10.0, "a"))
     buf.append(_u(100.0, "b"))
     buf.append(_u(110.0, "c"))
-    # now=120, window=30 → include utterances >= 90
-    assert [u.text for u in buf.tail(seconds=30.0, now=120.0)] == ["b", "c"]
+    # reference_ts=120, window=30 → include utterances >= 90
+    assert [u.text for u in buf.tail(seconds=30.0, reference_ts=120.0)] == ["b", "c"]
 
 
 def test_latest_timestamp():
