@@ -60,11 +60,15 @@ class ContextTier:
             if self._last.recent_verbatim
             else ""
         )
-        fresh = verbatim_prefix + (
-            f"NEW TRANSCRIPT SINCE LAST DISTILLATION:\n{new_transcript}"
+        # SEC-7: wrap transcript content in XML tags to make the boundary
+        # between instructions and user-supplied content explicit, reducing
+        # the prompt-injection surface from spoken content.
+        transcript_block = (
+            f"<transcript>\n{new_transcript}\n</transcript>"
             if new_transcript
-            else "(no new transcript)"
+            else "<transcript>(no new transcript)</transcript>"
         )
+        fresh = verbatim_prefix + f"NEW TRANSCRIPT SINCE LAST DISTILLATION:\n{transcript_block}"
         raw = await self._client.complete(
             model=self.model,
             system=CONTEXT_SYSTEM,

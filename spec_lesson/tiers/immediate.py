@@ -29,7 +29,9 @@ class ImmediateTier:
         tail = self._buffer.tail(seconds=self.TAIL_SECONDS, now=now)
         tail_text = "\n".join(f"[{u.timestamp:.1f}] {u.speaker}: {u.text}" for u in tail)
         cached = "LAST 90 SECONDS:"
-        fresh = tail_text or "(silence)"
+        # SEC-7: wrap transcript content in XML tags to delimit user-supplied
+        # spoken content from model instructions, reducing injection surface.
+        fresh = f"<transcript>\n{tail_text}\n</transcript>" if tail_text else "<transcript>(silence)</transcript>"
         raw = await self._client.complete(
             model=self.model,
             system=IMMEDIATE_SYSTEM,

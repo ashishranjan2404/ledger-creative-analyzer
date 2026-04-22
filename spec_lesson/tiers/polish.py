@@ -39,7 +39,9 @@ class PolishTier:
             full_transcript = head + _TRUNCATION_MARKER + tail
 
         cached = f"FINAL DISTILLATION:\n{final_distillation.to_json()}"
-        fresh = f"FULL TRANSCRIPT:\n{full_transcript}"
+        # SEC-7: wrap transcript in XML tags so the LLM boundary between
+        # instructions and user-supplied spoken content is unambiguous.
+        fresh = f"FULL TRANSCRIPT:\n<transcript>\n{full_transcript}\n</transcript>"
         return await self._client.complete(
             model=self.model,
             system=POLISH_SYSTEM,

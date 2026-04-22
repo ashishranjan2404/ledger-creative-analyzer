@@ -36,7 +36,14 @@ class ThreadTier:
             f"[{u.timestamp:.1f}] {u.speaker}: {u.text}" for u in tail
         )
         cached = f"BASELINE TOPIC: {baseline_topic}"
-        fresh = f"LAST 2 MIN OF TRANSCRIPT:\n{tail_text or '(silence)'}"
+        # SEC-7: wrap transcript content in XML tags to delimit user-supplied
+        # spoken content from model instructions, reducing injection surface.
+        transcript_block = (
+            f"<transcript>\n{tail_text}\n</transcript>"
+            if tail_text
+            else "<transcript>(silence)</transcript>"
+        )
+        fresh = f"LAST 2 MIN OF TRANSCRIPT:\n{transcript_block}"
         raw = await self._client.complete(
             model=self.model,
             system=THREAD_SYSTEM,
