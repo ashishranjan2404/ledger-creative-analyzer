@@ -202,6 +202,11 @@ class Orchestrator:
                 try:
                     polished = await self.polish_tier.run(final_distillation=dist, full_transcript=all_text)
                     self.session.distillation_md.write_text(polished, encoding="utf-8")
+                    if self._observer is not None:
+                        try:
+                            self._observer.on_polish(at=time.monotonic() - self._session_start)
+                        except Exception as e:
+                            log.warning("observer.on_polish failed: %s", e)
                 except Exception:
                     # Polish call failed (e.g. context-window exceeded or network
                     # error at shutdown).  Fall back to writing the plain context
