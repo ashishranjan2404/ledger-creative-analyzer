@@ -13,7 +13,7 @@ async def test_runs_callback_on_interval_until_stopped():
     await asyncio.sleep(0.17)  # should fire ~3 times
     runner.stop()
     await task
-    assert len(calls) >= 2
+    assert 2 <= len(calls) <= 10, f"expected 2-10 calls in 0.17s at 0.05s interval, got {len(calls)}"
 
 @pytest.mark.asyncio
 async def test_trigger_now_forces_immediate_run():

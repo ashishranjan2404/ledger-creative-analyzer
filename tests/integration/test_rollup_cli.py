@@ -35,8 +35,27 @@ def test_rollup_cli_aggregates_across_projects(tmp_path: Path):
     assert "Session A" in md
     assert "Session B" in md
     assert "Use Deepgram" in md
-    # case-insensitive dedup should have kept only one
-    assert md.lower().count("use deepgram") == 1
+    # R8 #12: structural dedup — verify "Use Deepgram" appears exactly once
+    # within the Decisions section (not just anywhere in the document).
+    lines = md.splitlines()
+    decisions_start = next(
+        (i for i, l in enumerate(lines) if l.strip() == "## Decisions"),
+        None,
+    )
+    assert decisions_start is not None, "Rollup must contain a ## Decisions section"
+    decisions_end = next(
+        (i for i, l in enumerate(lines[decisions_start + 1:], decisions_start + 1)
+         if l.startswith("## ")),
+        len(lines),
+    )
+    decisions_section = "\n".join(lines[decisions_start:decisions_end])
+    assert decisions_section.lower().count("use deepgram") == 1, (
+        f"case-insensitive dedup should have kept exactly one 'Use Deepgram' "
+        f"in ## Decisions, got: {decisions_section.lower().count('use deepgram')}"
+    )
+    assert "Session A" in decisions_section or "Session B" in decisions_section, (
+        "At least one session attribution must appear in the Decisions section"
+    )
     assert "ship HUD?" in md
 
 

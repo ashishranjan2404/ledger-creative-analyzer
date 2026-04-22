@@ -36,3 +36,15 @@ async def test_polish_passes_final_distillation_as_cached():
     assert "T" in call["cached_context"]
     assert "D" in call["cached_context"]
     assert "transcript body" in call["fresh_input"]
+    # R8 #11: verify use_cache=False (polish is one-shot, no cache benefit)
+    assert call.get("use_cache", True) is False, (
+        "PolishTier must pass use_cache=False — one-shot call has no second consumer"
+    )
+    # R8 #11: verify cached_context carries the full FINAL DISTILLATION prefix
+    assert "FINAL DISTILLATION:" in call["cached_context"], (
+        "cached_context must start with 'FINAL DISTILLATION:' block"
+    )
+    # R8 #11: verify fresh_input carries the full transcript with FULL TRANSCRIPT prefix
+    assert "FULL TRANSCRIPT:" in call["fresh_input"] or "<transcript>" in call["fresh_input"], (
+        "fresh_input must contain the full transcript section"
+    )
