@@ -203,7 +203,7 @@ def rollup(
     from .rollup.collector import find_session_files, parse_session
     from .rollup.aggregator import render_rollup, filter_by_window
     files = find_session_files(root)
-    notes = [parse_session(f) for f in files]
+    notes = [n for n in (parse_session(f) for f in files) if n is not None]
     notes = filter_by_window(notes, hours=since_hours)
     md = render_rollup(notes, window_label=f"last {since_hours:g}h")
     if out:

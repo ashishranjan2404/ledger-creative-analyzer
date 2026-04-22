@@ -55,8 +55,13 @@ def _parse_bulleted_section(body: str, header: str) -> list[str]:
     return [i for i in items if i]
 
 
-def parse_session(path: Path) -> SessionNote:
-    text = path.read_text(encoding="utf-8")
+def parse_session(path: Path) -> "SessionNote | None":
+    import logging as _logging
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as e:
+        _logging.getLogger(__name__).warning("skipping unreadable session %s: %s", path, e)
+        return None
     front = _FRONT_RE.match(text)
     date = ""
     topics: list[str] = []
