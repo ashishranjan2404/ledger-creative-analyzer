@@ -31,6 +31,12 @@ class TriggerDetector:
         # which would make (now - last_fire_at) hugely negative and either fire
         # immediately or lock indefinitely depending on sign conventions.
         self._last_fire_monotonic: Optional[float] = None
+        self._fire_count: int = 0
+
+    @property
+    def fire_count(self) -> int:
+        """Number of times check() has returned True (trigger matched + cooldown passed)."""
+        return self._fire_count
 
     def check(self, text: str, now: float) -> bool:
         """Return True if *text* matches the trigger pattern and the cooldown has elapsed.
@@ -48,6 +54,7 @@ class TriggerDetector:
         ):
             return False
         self._last_fire_monotonic = mono_now
+        self._fire_count += 1
         return True
 
     def log_fire(self, log_path: Path, phrase: str) -> None:
