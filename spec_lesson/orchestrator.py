@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional, Protocol
 
+from .audio_ingress import AudioIngress
+from .audio_ingress import AudioSource  # re-export for callers that import from here
 from .lifecycle import SessionLifecycle
 from .session import Session
 from .tiers.client import AnthropicClient
@@ -21,10 +23,7 @@ from .tiers.thread import ThreadTier
 from .tiers.polish import PolishTier
 from .tiers.immediate import ImmediateTier
 from .tiers.scheduler import PeriodicRunner
-from .transcript.buffer import RollingTranscript
-from .transcript.persist import TranscriptWriter
 from .transcript.utterance import Utterance
-from .trigger.detector import TriggerDetector
 from .writer.claude_md import ClaudeMdWriter
 from .hud.observer import HudObserver
 
@@ -32,18 +31,6 @@ log = logging.getLogger(__name__)
 
 
 UtteranceCallback = Callable[[dict[str, Any]], None]
-
-
-class AudioSource(Protocol):
-    """Structural interface for any audio input source.
-
-    Implementors must support ``on_utterance(cb)`` to register a callback,
-    ``start()`` to begin capture, and ``stop()`` to tear down cleanly.
-    ``cli._LiveSource`` and test mocks satisfy this protocol.
-    """
-    def on_utterance(self, cb: UtteranceCallback) -> None: ...
-    def start(self) -> None: ...
-    def stop(self) -> None: ...
 
 
 @dataclass
@@ -77,7 +64,7 @@ class _PauseWatcherState:
     last_utterance_monotonic: float = field(default_factory=time.monotonic)
 
     def on_utterance_received(self, now_mono: float) -> None:
-        """Update the last-utterance wall-clock marker."""
+        """Update the last-utterance wall-clock marker (used by tests/run())."""
         self.last_utterance_monotonic = now_mono
 
     def should_fire(
@@ -85,8 +72,15 @@ class _PauseWatcherState:
         latest_ts: Optional[float],
         utterance_count: int,
         now_mono: float,
+        last_utterance_mono: Optional[float] = None,
     ) -> bool:
-        """Return True iff all gates pass and a pause has been detected."""
+        """Return True iff all gates pass and a pause has been detected.
+
+        *last_utterance_mono*: if provided, overrides
+        ``self.last_utterance_monotonic`` for the pause-elapsed check.
+        Pass ``ingress.last_utterance_monotonic`` so the watcher stays in sync
+        with the AudioIngress rather than maintaining a separate copy.
+        """
         if latest_ts is None:
             return False
         if utterance_count < self.min_utterances:
@@ -95,7 +89,8 @@ class _PauseWatcherState:
             return False
         if now_mono - self.last_fired_monotonic < self.min_interval:
             return False
-        elapsed_since_speech = now_mono - self.last_utterance_monotonic
+        speech_ref = last_utterance_mono if last_utterance_mono is not None else self.last_utterance_monotonic
+        elapsed_since_speech = now_mono - speech_ref
         return elapsed_since_speech >= self.pause_threshold
 
     def mark_fired(self, latest_ts: float, now_mono: float) -> None:
@@ -107,10 +102,11 @@ class _PauseWatcherState:
 class Orchestrator:
     """Wire and run all spec-lesson subsystems for one session.
 
-    Owns the ``RollingTranscript`` buffer, three tier runners (context, thread,
-    immediate), the ``ClaudeMdWriter``, ``TranscriptWriter``, ``TriggerDetector``,
-    and ``SessionLifecycle``.  ``run()`` is the top-level coroutine; ``ingest()``
-    is the thread-safe intake point for utterance dicts from any source.
+    Owns tier runners (context, thread, immediate), ``ClaudeMdWriter``,
+    ``AudioIngress`` (which owns the buffer, transcript writer, and trigger
+    detector), and ``SessionLifecycle``.  ``run()`` is the top-level
+    coroutine; ``ingest()`` is the thread-safe intake point for utterance
+    dicts from any source.
     """
 
     def __init__(
@@ -124,20 +120,30 @@ class Orchestrator:
         self.session = session
         self.client = client
         self.cfg = config
-        self.audio_source = audio_source
         self._observer = observer
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._session_start: float = time.monotonic()
 
-        self.buffer = RollingTranscript()
-        self.transcript_writer = TranscriptWriter(session.transcript_jsonl)
+        self.ingress = AudioIngress(
+            transcript_path=session.transcript_jsonl,
+            triggers_log_path=session.triggers_log,
+            audio_source=audio_source,
+            on_trigger_fired=self._on_trigger_fired,
+        )
+
+        # Convenience aliases kept for backward compatibility: existing tests
+        # (and callers) may reference orch.buffer, orch.transcript_writer,
+        # orch.trigger directly.
+        self.buffer = self.ingress.buffer
+        self.transcript_writer = self.ingress.transcript_writer
+        self.trigger = self.ingress.trigger
+
         self.claude_md_writer = ClaudeMdWriter(session.claude_md)
 
         self.context_tier = ContextTier(client=client, buffer=self.buffer)
         self.thread_tier = ThreadTier(client=client, buffer=self.buffer)
         self.polish_tier = PolishTier(client=client)
         self.immediate_tier = ImmediateTier(client=client, buffer=self.buffer)
-        self.trigger = TriggerDetector()
 
         self._context_runner = PeriodicRunner(name="context", interval_seconds=config.context_interval, callback=self._run_context)
         self._thread_runner = PeriodicRunner(name="thread", interval_seconds=config.thread_interval, callback=self._run_thread)
@@ -157,28 +163,23 @@ class Orchestrator:
         self._shutting_down: bool = False
 
     def ingest(self, utterance_dict: dict) -> None:
-        u = Utterance.safe_from_dict(utterance_dict)
-        if u is None:
-            return  # malformed frame — warning already logged inside safe_from_dict
-        self.buffer.append(u)
-        self.transcript_writer.append(u)
-        if u.is_final and self.trigger.check(u.text, now=u.timestamp):
-            self._record_trigger_fire(u)
-            # ingest() may be called from a non-loop thread (e.g. the
-            # DeepgramStream pump thread).  asyncio.create_task() requires a
-            # running event loop on the calling thread and will raise
-            # RuntimeError otherwise.  Use call_soon_threadsafe so the trigger
-            # is always scheduled on the event-loop thread regardless of which
-            # thread calls ingest().
-            if self._loop is not None:
-                self._loop.call_soon_threadsafe(self._context_runner._trigger.set)
-            else:
-                # Fallback for ingest() called before run() (e.g. stdin feed
-                # that runs inside a coroutine on the loop thread).
-                asyncio.create_task(self._context_runner.trigger_now())
+        """Thread-safe utterance intake.  Thin delegate to ``AudioIngress.ingest()``."""
+        self.ingress.ingest(utterance_dict)
 
-    def _record_trigger_fire(self, u: Utterance) -> None:
-        self.trigger.log_fire(self.session.triggers_log, u.text)
+    def _on_trigger_fired(self, u: Utterance) -> None:
+        """Schedule context runner and notify HUD observer when a trigger phrase fires.
+
+        AudioIngress has already written the trigger log entry.
+        """
+        # ingest()/on_trigger_fired may be called from a non-loop thread (e.g.
+        # the DeepgramStream pump thread).  Use call_soon_threadsafe when the
+        # loop is available; fall back to create_task for the stdin-feed case
+        # where ingest() is called from inside a coroutine on the loop thread.
+        if self._loop is not None:
+            self._loop.call_soon_threadsafe(self._context_runner._trigger.set)
+        else:
+            asyncio.create_task(self._context_runner.trigger_now())
+
         if self._observer is not None:
             try:
                 elapsed = time.monotonic() - self._session_start
@@ -246,7 +247,8 @@ class Orchestrator:
                 return
             latest = self.buffer.latest_timestamp()
             now_mono = time.monotonic()
-            if pw.should_fire(latest, len(self.buffer.all()), now_mono):
+            if pw.should_fire(latest, len(self.buffer.all()), now_mono,
+                              last_utterance_mono=self.ingress.last_utterance_monotonic):
                 pw.mark_fired(latest, now_mono)  # type: ignore[arg-type]
                 try:
                     await self._run_immediate()
@@ -260,11 +262,7 @@ class Orchestrator:
 
         self._context_runner.stop()
         self._thread_runner.stop()
-        if self.audio_source is not None:
-            try:
-                self.audio_source.stop()
-            except Exception:
-                pass
+        self.ingress.stop()
         try:
             latest = self.buffer.latest_timestamp()
             if latest is None:
@@ -326,12 +324,7 @@ class Orchestrator:
         finally:
             # RES-1 / Fix 6: always close the transcript writer, even if
             # context tier or polish raises — prevents file-handle leaks.
-            self.transcript_writer.close()
-
-    def _on_utterance_from_audio(self, utterance_dict: dict) -> None:
-        """Bridge callback from audio source: mark wall-clock + ingest."""
-        self._pause_watcher_state.on_utterance_received(time.monotonic())
-        self.ingest(utterance_dict)
+            self.ingress.close()
 
     async def _hud_tick_task(self) -> None:
         """Update observer.tick(elapsed) once per second while not shutting down."""
@@ -345,16 +338,14 @@ class Orchestrator:
                     log.warning("observer.tick failed: %s", e)
 
     async def run(self) -> None:
-        # Capture the running event loop so that ingest(), which may be called
-        # from a background audio-pump thread, can safely schedule work via
-        # loop.call_soon_threadsafe() instead of asyncio.create_task().
+        # Capture the running event loop so that _on_trigger_fired(), which may
+        # be called from a background audio-pump thread, can safely schedule
+        # work via loop.call_soon_threadsafe() instead of asyncio.create_task().
         self._loop = asyncio.get_event_loop()
         self._session_start = time.monotonic()
         self._lifecycle.install_signal_handlers()
         self._pause_watcher_state.on_utterance_received(time.monotonic())
-        if self.audio_source is not None:
-            self.audio_source.on_utterance(self._on_utterance_from_audio)
-            self.audio_source.start()
+        self.ingress.start()
         gather_tasks = [
             self._context_runner.run(),
             self._thread_runner.run(),
