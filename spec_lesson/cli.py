@@ -194,6 +194,27 @@ def status():
 
 
 @app.command()
+def rollup(
+    since_hours: float = typer.Option(24.0, "--since-hours", help="Window in hours"),
+    root: Path = typer.Option(Path.home(), "--root", help="Directory to scan for .spec-lesson/ session files"),
+    out: Path = typer.Option(None, "--out", help="Output path; default stdout"),
+):
+    """Aggregate recent spec-lesson sessions into a rollup markdown."""
+    from .rollup.collector import find_session_files, parse_session
+    from .rollup.aggregator import render_rollup, filter_by_window
+    files = find_session_files(root)
+    notes = [parse_session(f) for f in files]
+    notes = filter_by_window(notes, hours=since_hours)
+    md = render_rollup(notes, window_label=f"last {since_hours:g}h")
+    if out:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(md, encoding="utf-8")
+        typer.echo(f"Wrote rollup to {out}")
+    else:
+        typer.echo(md)
+
+
+@app.command()
 def stop():
     pid_file = Path.cwd() / ".spec-lesson" / "daemon.pid"
     if not pid_file.exists():
