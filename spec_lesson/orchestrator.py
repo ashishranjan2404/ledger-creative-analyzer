@@ -279,7 +279,8 @@ class Orchestrator:
             latest = self.buffer.latest_timestamp()
             if pw.should_fire(latest, len(self.buffer.all()), now_mono,
                               last_utterance_mono=self.ingress.last_utterance_monotonic):
-                pw.mark_fired(latest, now_mono)  # type: ignore[arg-type]
+                assert latest is not None  # should_fire() returns False when latest is None
+                pw.mark_fired(latest, now_mono)
                 try:
                     await self._run_immediate()
                 except Exception as e:
@@ -371,7 +372,9 @@ class Orchestrator:
         # Capture the running event loop so that _on_trigger_fired(), which may
         # be called from a background audio-pump thread, can safely schedule
         # work via loop.call_soon_threadsafe() instead of asyncio.create_task().
-        self._loop = asyncio.get_event_loop()
+        # get_running_loop() is the correct call inside a coroutine (3.10+ deprecates
+        # get_event_loop() when called with a running loop in scope).
+        self._loop = asyncio.get_running_loop()
         self._session_start = time.monotonic()
         self._lifecycle.install_signal_handlers()
         self.ingress.start()
