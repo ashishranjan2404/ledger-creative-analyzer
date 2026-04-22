@@ -43,3 +43,11 @@ def test_pid_file_written_and_parseable(tmp_path: Path):
     assert int(life.pid_file.read_text().strip()) > 0
     life.clear_pid_file()
     assert not life.pid_file.exists()
+
+
+def test_is_stopping_reflects_stop_event(tmp_path):
+    from spec_lesson.lifecycle import SessionLifecycle
+    life = SessionLifecycle(state_dir=tmp_path / "x", max_seconds=60.0)
+    assert life.is_stopping is False
+    life.request_stop()
+    assert life.is_stopping is True

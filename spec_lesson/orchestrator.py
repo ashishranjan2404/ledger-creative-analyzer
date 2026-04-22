@@ -162,7 +162,7 @@ class Orchestrator:
 
     async def _pause_watcher(self) -> None:
         """Fire ImmediateTier when no new utterance has arrived for >_pause_threshold seconds."""
-        while not self._lifecycle._stop_event.is_set():
+        while not self._lifecycle.is_stopping:
             await asyncio.sleep(self._pause_check_interval)
             # RES-2 / Fix 7: do NOT fire _run_immediate after _on_shutdown has
             # started tearing down audio — check the flag after each sleep.
@@ -220,7 +220,7 @@ class Orchestrator:
 
     async def _hud_tick_task(self) -> None:
         """Update observer.tick(elapsed) once per second while not shutting down."""
-        while not self._lifecycle._stop_event.is_set():
+        while not self._lifecycle.is_stopping:
             await asyncio.sleep(1.0)
             if self._observer is not None:
                 elapsed = time.monotonic() - self._session_start

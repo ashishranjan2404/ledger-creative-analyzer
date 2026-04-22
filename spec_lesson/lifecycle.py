@@ -80,6 +80,11 @@ class SessionLifecycle:
     def on_shutdown(self, hook: ShutdownHook) -> None:
         self._shutdown_hooks.append(hook)
 
+    @property
+    def is_stopping(self) -> bool:
+        """True once request_stop() has been called or the max-seconds cap has elapsed."""
+        return self._stop_event.is_set()
+
     def request_stop(self) -> None:
         self._stop_event.set()
 
