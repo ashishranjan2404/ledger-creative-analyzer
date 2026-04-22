@@ -19,6 +19,7 @@ from .transcript.persist import TranscriptWriter
 from .transcript.utterance import Utterance
 from .trigger.detector import TriggerDetector
 from .writer.claude_md import ClaudeMdWriter
+from .hud.observer import HudObserver
 
 log = logging.getLogger(__name__)
 
@@ -43,12 +44,15 @@ class Orchestrator:
         client: AnthropicClient,
         config: OrchestratorConfig,
         audio_source: Optional[AudioSource] = None,
+        observer: Optional[HudObserver] = None,
     ):
         self.session = session
         self.client = client
         self.cfg = config
         self.audio_source = audio_source
+        self._observer = observer
         self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._session_start: float = time.monotonic()
 
         self.buffer = RollingTranscript()
         self.transcript_writer = TranscriptWriter(session.transcript_jsonl)
@@ -101,6 +105,8 @@ class Orchestrator:
         self.session.triggers_log.parent.mkdir(parents=True, exist_ok=True)
         with self.session.triggers_log.open("a", encoding="utf-8") as fh:
             fh.write(line)
+        if self._observer is not None:
+            self._observer.on_trigger(at=u.timestamp, phrase=u.text)
 
     async def _run_context(self) -> None:
         latest = self.buffer.latest_timestamp()
@@ -108,14 +114,29 @@ class Orchestrator:
             return
         dist = await self.context_tier.run(now=latest)
         self.claude_md_writer.write_managed_section(dist.render_markdown())
+        if self._observer is not None:
+            elapsed = time.monotonic() - self._session_start
+            self._observer.on_context(
+                at=elapsed,
+                topic=dist.topic,
+                decisions_count=len(dist.decisions),
+            )
 
     async def _run_thread(self) -> None:
         latest = self.buffer.latest_timestamp()
         if latest is None:
             return
         baseline = self.context_tier.last.topic
-        await self.thread_tier.run(baseline_topic=baseline, now=latest)
+        drift_state = await self.thread_tier.run(baseline_topic=baseline, now=latest)
         log.info("thread tier ran")
+        if self._observer is not None:
+            elapsed = time.monotonic() - self._session_start
+            self._observer.on_thread(
+                at=elapsed,
+                drift=drift_state.drift,
+                current_topic=drift_state.current_topic,
+                drift_from=drift_state.drift_from,
+            )
 
     async def _run_immediate(self) -> None:
         latest = self.buffer.latest_timestamp()
@@ -123,6 +144,9 @@ class Orchestrator:
             return
         out = await self.immediate_tier.run(now=latest)
         log.info("immediate: %s", out.candidates)
+        if self._observer is not None:
+            elapsed = time.monotonic() - self._session_start
+            self._observer.on_immediate(at=elapsed, candidates=out.candidates)
 
     async def _pause_watcher(self) -> None:
         """Fire ImmediateTier when no new utterance has arrived for >_pause_threshold seconds."""
@@ -182,22 +206,33 @@ class Orchestrator:
         self._utterance_received_monotonic = time.monotonic()
         self.ingest(utterance_dict)
 
+    async def _hud_tick_task(self) -> None:
+        """Update observer.tick(elapsed) once per second while not shutting down."""
+        while not self._lifecycle._stop_event.is_set():
+            await asyncio.sleep(1.0)
+            if self._observer is not None:
+                elapsed = time.monotonic() - self._session_start
+                self._observer.tick(elapsed=elapsed)
+
     async def run(self) -> None:
         # Capture the running event loop so that ingest(), which may be called
         # from a background audio-pump thread, can safely schedule work via
         # loop.call_soon_threadsafe() instead of asyncio.create_task().
         self._loop = asyncio.get_event_loop()
+        self._session_start = time.monotonic()
         self._lifecycle.install_signal_handlers()
         self._utterance_received_monotonic = time.monotonic()
         if self.audio_source is not None:
             self.audio_source.on_utterance(self._on_utterance_from_audio)
             self.audio_source.start()
-        runners = asyncio.gather(
+        gather_tasks = [
             self._context_runner.run(),
             self._thread_runner.run(),
             self._pause_watcher(),
-            return_exceptions=True,
-        )
+        ]
+        if self._observer is not None:
+            gather_tasks.append(self._hud_tick_task())
+        runners = asyncio.gather(*gather_tasks, return_exceptions=True)
         await self._lifecycle.run_until_done()
         # Ensure stop event is set (covers the max_seconds timeout path where
         # run_until_done exits without request_stop() having been called).

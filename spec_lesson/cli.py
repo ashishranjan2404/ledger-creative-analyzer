@@ -82,6 +82,7 @@ def _build_audio_source():
 def start(
     transcript_stdin: bool = typer.Option(False, "--transcript-stdin", help="Read JSONL utterances from stdin"),
     audio: bool = typer.Option(False, "--audio", help="Capture mic + BlackHole loopback, transcribe via Deepgram"),
+    hud: str = typer.Option("off", "--hud", help="HUD mode: off | stdout | tk"),
 ):
     """Start a spec-lesson session in the current directory."""
     if transcript_stdin and audio:
@@ -93,6 +94,9 @@ def start(
             fg=typer.colors.YELLOW,
         )
         raise typer.Exit(2)
+    if hud not in ("off", "stdout", "tk"):
+        typer.secho("--hud must be one of: off, stdout, tk", fg=typer.colors.RED)
+        raise typer.Exit(2)
 
     project_dir = Path.cwd()
     session = Session.new(project_dir=project_dir)
@@ -100,7 +104,21 @@ def start(
     cfg = _build_cfg()
 
     audio_source = _build_audio_source() if audio else None
-    orch = Orchestrator(session=session, client=client, config=cfg, audio_source=audio_source)
+
+    # Build observer + renderer based on --hud flag
+    observer = None
+    renderer = None
+    if hud != "off":
+        from .hud.observer import HudObserver
+        observer = HudObserver(max_seconds=cfg.max_seconds)
+    if hud == "stdout":
+        from .hud.renderer import StdoutHudRenderer
+        renderer = StdoutHudRenderer()
+    elif hud == "tk":
+        from .hud.renderer import TkinterHudRenderer
+        renderer = TkinterHudRenderer(observer=observer)
+
+    orch = Orchestrator(session=session, client=client, config=cfg, audio_source=audio_source, observer=observer)
 
     if transcript_stdin:
         async def feed_stdin():
@@ -121,12 +139,43 @@ def start(
                     continue
                 orch.ingest(payload)
 
-        async def main():
-            await asyncio.gather(orch.run(), feed_stdin())
-
-        asyncio.run(main())
+        if hud == "tk":
+            import threading
+            async def main():
+                await asyncio.gather(orch.run(), feed_stdin())
+            t = threading.Thread(target=lambda: asyncio.run(main()), daemon=True)
+            t.start()
+            renderer.mainloop()
+        else:
+            async def main_stdout():
+                async def poll_renderer():
+                    while True:
+                        await asyncio.sleep(2.0)
+                        if renderer is not None and observer is not None:
+                            renderer.render(observer.snapshot())
+                tasks = [orch.run(), feed_stdin()]
+                if renderer is not None:
+                    tasks.append(poll_renderer())
+                await asyncio.gather(*tasks)
+            asyncio.run(main_stdout())
     else:
-        asyncio.run(orch.run())
+        if hud == "tk":
+            import threading
+            t = threading.Thread(target=lambda: asyncio.run(orch.run()), daemon=True)
+            t.start()
+            renderer.mainloop()
+        else:
+            async def main_no_stdin():
+                async def poll_renderer():
+                    while True:
+                        await asyncio.sleep(2.0)
+                        if renderer is not None and observer is not None:
+                            renderer.render(observer.snapshot())
+                tasks = [orch.run()]
+                if renderer is not None:
+                    tasks.append(poll_renderer())
+                await asyncio.gather(*tasks)
+            asyncio.run(main_no_stdin())
 
 
 @app.command()
