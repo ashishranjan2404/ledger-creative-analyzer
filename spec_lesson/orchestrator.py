@@ -9,7 +9,7 @@ is safe to call from any thread.
 import asyncio
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional, Protocol
 
@@ -61,25 +61,18 @@ class _PauseWatcherState:
     min_interval: float
     last_fired_for_ts: Optional[float] = None
     last_fired_monotonic: float = 0.0
-    last_utterance_monotonic: float = field(default_factory=time.monotonic)
-
-    def on_utterance_received(self, now_mono: float) -> None:
-        """Update the last-utterance wall-clock marker (used by tests/run())."""
-        self.last_utterance_monotonic = now_mono
 
     def should_fire(
         self,
         latest_ts: Optional[float],
         utterance_count: int,
         now_mono: float,
-        last_utterance_mono: Optional[float] = None,
+        last_utterance_mono: float,
     ) -> bool:
         """Return True iff all gates pass and a pause has been detected.
 
-        *last_utterance_mono*: if provided, overrides
-        ``self.last_utterance_monotonic`` for the pause-elapsed check.
-        Pass ``ingress.last_utterance_monotonic`` so the watcher stays in sync
-        with the AudioIngress rather than maintaining a separate copy.
+        *last_utterance_mono*: monotonic timestamp of the most recent utterance,
+        sourced from ``ingress.last_utterance_monotonic``.
         """
         if latest_ts is None:
             return False
@@ -89,8 +82,7 @@ class _PauseWatcherState:
             return False
         if now_mono - self.last_fired_monotonic < self.min_interval:
             return False
-        speech_ref = last_utterance_mono if last_utterance_mono is not None else self.last_utterance_monotonic
-        elapsed_since_speech = now_mono - speech_ref
+        elapsed_since_speech = now_mono - last_utterance_mono
         return elapsed_since_speech >= self.pause_threshold
 
     def mark_fired(self, latest_ts: float, now_mono: float) -> None:
@@ -165,6 +157,25 @@ class Orchestrator:
     def ingest(self, utterance_dict: dict) -> None:
         """Thread-safe utterance intake.  Thin delegate to ``AudioIngress.ingest()``."""
         self.ingress.ingest(utterance_dict)
+
+    def override_pause_settings(
+        self,
+        *,
+        check_interval: Optional[float] = None,
+        pause_threshold: Optional[float] = None,
+        min_utterances: Optional[int] = None,
+        min_interval: Optional[float] = None,
+    ) -> None:
+        """Test-only: override pause watcher settings after construction."""
+        pw = self._pause_watcher_state
+        if check_interval is not None:
+            pw.check_interval = check_interval
+        if pause_threshold is not None:
+            pw.pause_threshold = pause_threshold
+        if min_utterances is not None:
+            pw.min_utterances = min_utterances
+        if min_interval is not None:
+            pw.min_interval = min_interval
 
     def _on_trigger_fired(self, u: Utterance) -> None:
         """Schedule context runner and notify HUD observer when a trigger phrase fires.
@@ -344,7 +355,6 @@ class Orchestrator:
         self._loop = asyncio.get_event_loop()
         self._session_start = time.monotonic()
         self._lifecycle.install_signal_handlers()
-        self._pause_watcher_state.on_utterance_received(time.monotonic())
         self.ingress.start()
         gather_tasks = [
             self._context_runner.run(),

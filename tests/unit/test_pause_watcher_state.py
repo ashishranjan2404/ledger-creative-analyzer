@@ -12,11 +12,7 @@ def _make_state(**kwargs) -> _PauseWatcherState:
         min_interval=10.0,
     )
     defaults.update(kwargs)
-    # Override last_utterance_monotonic so tests start from a known baseline.
-    state = _PauseWatcherState(**defaults)
-    # Pin last_utterance_monotonic far in the past so pause has "elapsed" by default.
-    state.last_utterance_monotonic = time.monotonic() - 9999.0
-    return state
+    return _PauseWatcherState(**defaults)
 
 
 # ---------------------------------------------------------------------------
@@ -25,7 +21,12 @@ def _make_state(**kwargs) -> _PauseWatcherState:
 
 def test_should_fire_returns_false_when_no_latest_ts():
     pw = _make_state()
-    assert pw.should_fire(latest_ts=None, utterance_count=5, now_mono=time.monotonic()) is False
+    now = time.monotonic()
+    # last_utterance_mono far in the past so pause would otherwise pass
+    assert pw.should_fire(
+        latest_ts=None, utterance_count=5, now_mono=now,
+        last_utterance_mono=now - 9999.0,
+    ) is False
 
 
 # ---------------------------------------------------------------------------
@@ -35,7 +36,10 @@ def test_should_fire_returns_false_when_no_latest_ts():
 def test_should_fire_returns_false_below_min_utterances():
     pw = _make_state(min_utterances=3)
     now = time.monotonic()
-    assert pw.should_fire(latest_ts=1.0, utterance_count=2, now_mono=now) is False
+    assert pw.should_fire(
+        latest_ts=1.0, utterance_count=2, now_mono=now,
+        last_utterance_mono=now - 9999.0,
+    ) is False
 
 
 # ---------------------------------------------------------------------------
@@ -45,11 +49,12 @@ def test_should_fire_returns_false_below_min_utterances():
 def test_should_fire_returns_false_same_timestamp():
     pw = _make_state(min_utterances=1, min_interval=0.0)
     now = time.monotonic()
+    last_speech = now - 9999.0
     # First fire should succeed.
-    assert pw.should_fire(latest_ts=1.0, utterance_count=1, now_mono=now) is True
+    assert pw.should_fire(latest_ts=1.0, utterance_count=1, now_mono=now, last_utterance_mono=last_speech) is True
     pw.mark_fired(latest_ts=1.0, now_mono=now)
     # Same timestamp: must not fire again.
-    assert pw.should_fire(latest_ts=1.0, utterance_count=2, now_mono=now + 5.0) is False
+    assert pw.should_fire(latest_ts=1.0, utterance_count=2, now_mono=now + 5.0, last_utterance_mono=last_speech) is False
 
 
 # ---------------------------------------------------------------------------
@@ -59,9 +64,10 @@ def test_should_fire_returns_false_same_timestamp():
 def test_should_fire_returns_false_within_min_interval():
     pw = _make_state(min_utterances=1, min_interval=30.0)
     now = time.monotonic()
+    last_speech = now - 9999.0
     pw.mark_fired(latest_ts=1.0, now_mono=now)
     # Different timestamp but only 5 seconds later — within the 30 s interval.
-    assert pw.should_fire(latest_ts=2.0, utterance_count=2, now_mono=now + 5.0) is False
+    assert pw.should_fire(latest_ts=2.0, utterance_count=2, now_mono=now + 5.0, last_utterance_mono=last_speech) is False
 
 
 # ---------------------------------------------------------------------------
@@ -72,8 +78,8 @@ def test_should_fire_returns_false_when_speech_too_recent():
     pw = _make_state(pause_threshold=1.2, min_utterances=1, min_interval=0.0)
     now = time.monotonic()
     # Simulate utterance just 0.2 s ago — pause_threshold is 1.2 s.
-    pw.on_utterance_received(now - 0.2)
-    assert pw.should_fire(latest_ts=1.0, utterance_count=1, now_mono=now) is False
+    last_utterance_mono = now - 0.2
+    assert pw.should_fire(latest_ts=1.0, utterance_count=1, now_mono=now, last_utterance_mono=last_utterance_mono) is False
 
 
 # ---------------------------------------------------------------------------
@@ -83,10 +89,11 @@ def test_should_fire_returns_false_when_speech_too_recent():
 def test_should_fire_returns_true_on_happy_path():
     pw = _make_state(pause_threshold=1.2, min_utterances=3, min_interval=10.0)
     now = time.monotonic()
-    # last_utterance_monotonic is already far in the past (set in _make_state).
-    # Different latest_ts from last_fired_for_ts (None), enough utterances,
-    # enough time since last fire (0.0).
-    assert pw.should_fire(latest_ts=5.0, utterance_count=3, now_mono=now) is True
+    # Speech far in the past, enough utterances, different ts, enough time since last fire.
+    assert pw.should_fire(
+        latest_ts=5.0, utterance_count=3, now_mono=now,
+        last_utterance_mono=now - 9999.0,
+    ) is True
 
 
 # ---------------------------------------------------------------------------
