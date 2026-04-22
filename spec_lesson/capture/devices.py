@@ -1,3 +1,10 @@
+"""Audio device enumeration helpers.
+
+``find_blackhole_device()`` scans the sounddevice device list for the BlackHole
+virtual loopback device used to capture system audio alongside the microphone.
+"""
+
+
 class DeviceError(RuntimeError):
     pass
 

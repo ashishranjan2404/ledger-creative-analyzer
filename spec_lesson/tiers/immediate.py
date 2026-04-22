@@ -1,3 +1,10 @@
+"""Immediate tier: real-time response suggestions fired on speech pause.
+
+Calls Claude Haiku with the last 90 seconds of transcript after the user stops
+speaking (detected by ``Orchestrator._pause_watcher``).  Returns three short
+response candidates — one neutral/buying-time, one substantive, one question —
+to help an ADHD user stay engaged without losing the thread.
+"""
 import json
 from dataclasses import dataclass, field
 from .client import AnthropicClient

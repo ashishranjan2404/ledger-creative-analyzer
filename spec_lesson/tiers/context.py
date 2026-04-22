@@ -1,3 +1,10 @@
+"""Context tier: slow, full-session distillation (default every 5 minutes).
+
+Calls Claude Sonnet with the entire session history and merges the result into
+a ``Distillation`` using append-only semantics — decisions and requirements are
+never dropped mid-session.  Uses prompt caching for the stable previous-state
+block to reduce API cost on repeated calls.
+"""
 import asyncio
 import json
 from datetime import datetime, timezone

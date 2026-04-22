@@ -1,3 +1,9 @@
+"""Anthropic API client wrapper with two-block prompt-cache structure.
+
+``AnthropicClient`` serialises every LLM call into a (system + cached context)
+block and a user message, keeping the stable context in the cacheable block to
+exploit Anthropic's 90% prompt-cache discount on subsequent calls.
+"""
 from typing import Any, Optional
 
 

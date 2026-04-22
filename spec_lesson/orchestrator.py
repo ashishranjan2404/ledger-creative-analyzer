@@ -1,3 +1,11 @@
+"""Central coordinator that wires together all spec-lesson subsystems.
+
+``Orchestrator.run()`` is the top-level coroutine: it starts audio capture,
+runs three periodic tiers (ContextTier every 5 min, ThreadTier every 2 min,
+ImmediateTier on speech pause), and triggers a final PolishTier pass on
+shutdown.  ``ingest()`` is the single intake point for utterance dicts and
+is safe to call from any thread.
+"""
 import asyncio
 import logging
 import time
@@ -25,6 +33,12 @@ log = logging.getLogger(__name__)
 
 
 class AudioSource(Protocol):
+    """Structural interface for any audio input source.
+
+    Implementors must support ``on_utterance(cb)`` to register a callback,
+    ``start()`` to begin capture, and ``stop()`` to tear down cleanly.
+    ``cli._LiveSource`` and test mocks satisfy this protocol.
+    """
     def on_utterance(self, cb) -> None: ...
     def start(self) -> None: ...
     def stop(self) -> None: ...
@@ -45,6 +59,14 @@ class OrchestratorConfig:
 
 
 class Orchestrator:
+    """Wire and run all spec-lesson subsystems for one session.
+
+    Owns the ``RollingTranscript`` buffer, three tier runners (context, thread,
+    immediate), the ``ClaudeMdWriter``, ``TranscriptWriter``, ``TriggerDetector``,
+    and ``SessionLifecycle``.  ``run()`` is the top-level coroutine; ``ingest()``
+    is the thread-safe intake point for utterance dicts from any source.
+    """
+
     def __init__(
         self,
         session: Session,

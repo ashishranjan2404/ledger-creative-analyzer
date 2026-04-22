@@ -1,3 +1,10 @@
+"""Periodic task runner with immediate-trigger support.
+
+``PeriodicRunner`` executes a callback once on entry, then waits up to
+``interval_seconds`` before running again — but it can be woken early via
+``trigger_now()`` (e.g. when a wake-word fires).  Stopping via ``stop()``
+unblocks any in-progress wait immediately.
+"""
 import asyncio
 import logging
 from typing import Awaitable, Callable
@@ -6,6 +13,15 @@ log = logging.getLogger(__name__)
 
 
 class PeriodicRunner:
+    """Run an async callback periodically, with early-trigger and stop support.
+
+    On each loop iteration the callback fires first, then the runner waits for
+    the earliest of: (a) interval elapsed, (b) ``stop()`` called, (c)
+    ``trigger_now()`` called.  This means the callback always runs once
+    immediately when ``run()`` is first awaited — callers should account for
+    this if a cold-start delay is needed.
+    """
+
     def __init__(self, name: str, interval_seconds: float, callback: Callable[[], Awaitable[None]]):
         self.name = name
         self.interval = interval_seconds
@@ -15,7 +31,9 @@ class PeriodicRunner:
 
     def stop(self) -> None:
         self._stop.set()
-        self._trigger.set()
+        self._trigger.set()  # why: unblocks asyncio.wait() immediately so the
+        # run() loop exits without waiting up to interval_seconds for the sleep
+        # task to expire.
 
     async def trigger_now(self) -> None:
         self._trigger.set()

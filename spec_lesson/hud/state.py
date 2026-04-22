@@ -1,3 +1,10 @@
+"""HUD data model: immutable snapshot passed from observer to renderer.
+
+``HudState`` holds the current topic, drift label, response suggestions, a
+capped timeline of recent tier events (max 50), and session elapsed/max times.
+``TierEvent`` is the single timeline entry type.  Both are plain dataclasses
+with no locking — thread safety is the observer's responsibility.
+"""
 from dataclasses import dataclass, field
 from ..tiers.base import DriftLabel
 
@@ -6,12 +13,20 @@ TimelineCap = 50
 
 @dataclass
 class TierEvent:
+    """A single entry in the HUD timeline, emitted by one LLM tier or trigger."""
     at: float           # seconds since session start
     kind: str           # "thread" | "context" | "immediate" | "trigger" | "polish"
     summary: str        # 1-line text
 
+
 @dataclass
 class HudState:
+    """Complete displayable state for one HUD render cycle.
+
+    Constructed by ``HudObserver`` and passed to renderers as a deep-copy
+    snapshot.  ``timeline`` is capped at ``TimelineCap`` entries; older events
+    are dropped from the front to keep memory bounded.
+    """
     topic: str
     drift: DriftLabel
     drift_from: str

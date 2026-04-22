@@ -1,3 +1,10 @@
+"""Polish tier: one-shot end-of-session note generation.
+
+Called once during shutdown after the final context distillation.  Feeds the
+full transcript (truncated head+tail if >100 k chars) and final ``Distillation``
+to Claude Sonnet and writes an Obsidian-style Markdown note with frontmatter,
+summary, decisions, requirements, open questions, and action items.
+"""
 from .base import Distillation
 from .client import AnthropicClient
 from .prompts import POLISH_SYSTEM

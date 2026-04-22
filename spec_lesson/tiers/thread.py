@@ -1,3 +1,10 @@
+"""Thread tier: lightweight topic-drift detection (default every 2 minutes).
+
+Calls Claude Haiku with the last 2 minutes of transcript against the current
+baseline topic and returns a ``DriftState`` labelled 'on', 'drifting', or
+'unknown'.  Intentionally skips prompt caching — the input is too short to
+meet Haiku's 2048-token cache threshold.
+"""
 import json
 from dataclasses import dataclass
 from .base import DriftLabel

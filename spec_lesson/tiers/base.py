@@ -1,3 +1,10 @@
+"""Shared data models for all LLM tiers.
+
+Defines ``Distillation`` (the running session knowledge state: topic,
+decisions, requirements, open questions, verbatim excerpt), helper functions
+for safe LLM-output parsing, and the ``Tier`` Protocol that all tier classes
+satisfy.
+"""
 import json
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
@@ -35,6 +42,13 @@ def _coerce_str_list(v: Any) -> list[str]:
 
 @dataclass
 class Distillation:
+    """Snapshot of the session's accumulated knowledge at one point in time.
+
+    All list fields (decisions, requirements, open_questions) are append-only
+    across merges — items are never removed mid-session to prevent the LLM from
+    silently losing context.  ``recent_verbatim`` is the only volatile field and
+    is kept out of the cache key (see ``to_json_stable()``).
+    """
     topic: str
     decisions: list[str]
     requirements: list[str]

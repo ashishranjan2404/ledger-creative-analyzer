@@ -1,3 +1,10 @@
+"""HUD rendering backends: stdout line printer and Tkinter overlay.
+
+``StdoutHudRenderer`` prints one status line per poll cycle to any text stream.
+``TkinterHudRenderer`` creates a frameless, always-on-top, semi-transparent
+overlay (alpha 0.88) that self-updates every 500 ms by polling the observer
+from the Tk main loop — ``render()`` is a no-op on this backend.
+"""
 import sys
 from typing import Protocol, TextIO
 from .state import HudState

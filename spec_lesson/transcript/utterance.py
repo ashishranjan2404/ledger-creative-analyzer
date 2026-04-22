@@ -1,3 +1,10 @@
+"""Utterance dataclass: the atomic unit of transcript data.
+
+A frozen ``Utterance`` carries timestamp, speaker label, text, and an
+``is_final`` flag that mirrors Deepgram's transcript finality.  Use
+``safe_from_dict()`` for untrusted input — it returns ``None`` on malformed
+payloads and enforces the 8 000-character text cap (SEC-4).
+"""
 import json
 import logging
 from dataclasses import dataclass, asdict

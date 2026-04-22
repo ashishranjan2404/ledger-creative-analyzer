@@ -1,3 +1,9 @@
+"""Command-line entry point for spec-lesson.
+
+Defines four Typer commands — ``start``, ``status``, ``stop``, ``rollup`` —
+and the helper functions that wire together the audio source, Anthropic client,
+and Orchestrator before handing off to ``asyncio.run``.
+"""
 import asyncio
 import json
 import os
@@ -205,6 +211,11 @@ def _read_pid_file(pid_file: Path) -> tuple[int | None, str]:
 
 @app.command()
 def status():
+    """Show whether a spec-lesson session is running in the current directory.
+
+    Reads .spec-lesson/daemon.pid and checks whether the recorded PID is alive.
+    Exits 0 in all non-error cases (including 'not running').
+    """
     pid_file = Path.cwd() / ".spec-lesson" / "daemon.pid"
     pid, err = _read_pid_file(pid_file)
     if err == "not_found":
@@ -247,6 +258,12 @@ def rollup(
 
 @app.command()
 def stop():
+    """Send SIGTERM to the running spec-lesson session in the current directory.
+
+    Reads .spec-lesson/daemon.pid, validates the spec-lesson header (SEC-3),
+    then signals the process.  Exits 1 if not running, 2 if the PID file was
+    not written by spec-lesson.
+    """
     pid_file = Path.cwd() / ".spec-lesson" / "daemon.pid"
     pid, err = _read_pid_file(pid_file)
     if err == "not_found":

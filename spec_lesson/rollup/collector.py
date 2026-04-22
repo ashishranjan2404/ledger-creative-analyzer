@@ -1,3 +1,10 @@
+"""Session file discovery and parsing for the rollup command.
+
+Scans a directory tree for ``.spec-lesson/session-*.md`` files, parses their
+YAML frontmatter (date, topics) and bulleted Markdown sections (decisions,
+requirements, open questions, action items) into ``SessionNote`` objects.
+Returns ``None`` for unreadable or malformed files rather than raising.
+"""
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone

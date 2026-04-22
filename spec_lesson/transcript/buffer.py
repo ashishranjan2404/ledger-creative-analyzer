@@ -1,3 +1,10 @@
+"""In-memory rolling transcript: append-only, query by time window.
+
+``RollingTranscript`` stores only final (``is_final=True``) utterances.
+It tracks the running maximum timestamp explicitly so out-of-order Deepgram
+finals never roll the cursor backward.  All reads return copies or filtered
+views — no mutation outside ``append()``.
+"""
 from typing import Optional
 from .utterance import Utterance
 

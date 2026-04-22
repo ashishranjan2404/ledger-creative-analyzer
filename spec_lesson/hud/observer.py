@@ -1,8 +1,24 @@
+"""Thread-safe HUD event collector.
+
+``HudObserver`` receives callbacks from the Orchestrator on the asyncio event
+loop thread and from the Tkinter poll timer on the main thread.  All mutations
+are serialised with ``threading.Lock``.  ``snapshot()`` returns a deep copy so
+the renderer can hold the object without holding the lock.
+"""
 import copy
 import threading
 from .state import HudState, TierEvent
 
+
 class HudObserver:
+    """Thread-safe collector of tier events for the HUD.
+
+    All public ``on_*`` methods are safe to call from any thread.  Internally
+    they acquire ``_lock``, mutate ``_state`` in place, then release.
+    ``snapshot()`` returns a ``copy.deepcopy`` so the caller owns the object
+    without needing to hold the lock during rendering.
+    """
+
     def __init__(self, max_seconds: float = 5400.0):
         self._state = HudState.initial(max_seconds=max_seconds)
         self._lock = threading.Lock()

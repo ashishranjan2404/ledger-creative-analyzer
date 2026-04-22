@@ -1,3 +1,10 @@
+"""Mic + loopback audio capture with numpy-based PCM mixing.
+
+``AudioCapture`` opens up to two ``sounddevice.RawInputStream`` handles (mic
+and optional BlackHole loopback), mixes them by averaging the int16 samples,
+and emits 16 kHz mono int16 PCM frames to a caller-supplied sink.  All stream
+management runs on a background daemon thread; call ``stop()`` to tear down.
+"""
 import threading
 from typing import Callable, Optional
 

@@ -1,3 +1,10 @@
+"""LLM system prompts and shared section-heading constants.
+
+This module has two roles: (1) it defines the verbatim system prompts passed to
+each tier's ``AnthropicClient.complete()`` call; (2) it exports the canonical
+Markdown section headings (``POLISH_SECTION_*``) that PolishTier writes and
+``rollup/collector.py`` parses — renaming a heading here updates both ends.
+"""
 # Canonical section headings written by PolishTier and parsed by rollup collector.
 # Both must reference these constants so that renaming one header updates both ends.
 POLISH_SECTION_SUMMARY = "Summary"

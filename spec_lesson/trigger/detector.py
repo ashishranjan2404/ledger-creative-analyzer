@@ -1,3 +1,10 @@
+"""Wake-word trigger detector for 'OK Claude build this/that/it'.
+
+``TriggerDetector.check()`` normalises incoming text, tests it against a
+compiled regex, and enforces a 30-second monotonic cooldown so a single
+spoken phrase doesn't fire the context tier multiple times during rapid
+Deepgram re-transcriptions.
+"""
 import re
 import time
 from typing import Optional

@@ -1,3 +1,10 @@
+"""Atomic writer for the spec-lesson managed section inside CLAUDE.md.
+
+``ClaudeMdWriter`` maintains a single HTML-comment-delimited block
+(``<!-- spec-lesson:start --> … <!-- spec-lesson:end -->``) inside the
+project's CLAUDE.md.  Writes are atomic: content goes to a temp file,
+fsynced, then ``os.replace``d so a crash never leaves a half-written CLAUDE.md.
+"""
 import os
 import re
 import tempfile
@@ -36,6 +43,16 @@ class ClaudeMdWriter:
         self._atomic_write(new)
 
     def _atomic_write(self, content: str) -> None:
+        """Write *content* to self.path atomically using tempfile + fsync + os.replace.
+
+        why: a plain ``path.write_text()`` call on macOS/Linux is NOT atomic —
+        the file is truncated first, then the new bytes are written.  A crash
+        between truncate and write leaves the CLAUDE.md empty.  Writing to a
+        sibling temp file (same filesystem → same device), fsyncing, then
+        calling ``os.replace()`` (which is POSIX-rename, atomic at the kernel
+        level) guarantees the file is either the old version or the new version,
+        never a partial update.
+        """
         fd, tmp_path = tempfile.mkstemp(
             prefix=f"{self.path.name}.tmp.",
             dir=str(self.path.parent),

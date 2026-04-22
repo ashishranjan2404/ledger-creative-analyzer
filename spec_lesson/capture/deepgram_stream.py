@@ -1,3 +1,11 @@
+"""Deepgram WebSocket live transcription client (SDK v6).
+
+``DeepgramStream`` runs a background pump thread that streams PCM audio frames
+to Deepgram's Nova-3 model and emits final-transcript dicts ready for
+``Orchestrator.ingest()``.  Audio is sent via ``send_audio(pcm)``; the pump
+thread signals readiness via a ``threading.Event`` so ``start()`` blocks only
+until the socket is established (or raises after 10 s timeout).
+"""
 import logging
 import threading
 from typing import Any, Callable, Optional

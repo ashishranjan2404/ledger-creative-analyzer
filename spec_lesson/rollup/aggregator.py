@@ -1,3 +1,10 @@
+"""Rollup aggregation and Markdown rendering.
+
+Takes a list of ``SessionNote`` objects, deduplicates items case-insensitively
+across sessions (preserving the first canonical form), counts topic tags, and
+renders a single Markdown rollup document.  ``filter_by_window()`` narrows to
+notes whose file mtime falls inside a rolling time window.
+"""
 from collections import Counter
 from datetime import datetime, timezone, timedelta
 from .collector import SessionNote
