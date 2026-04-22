@@ -63,6 +63,35 @@ async def test_polish_does_not_truncate_short_transcript():
     assert short in fresh, "Short transcript must appear verbatim in fresh_input"
 
 
+@pytest.mark.asyncio
+async def test_polish_head_tail_truncation_preserves_both_ends():
+    """BUG-D-8: head+tail truncation must preserve the session opening AND
+    the most-recent context.  Pure tail truncation dropped the session brief."""
+    client = AsyncMock()
+    client.complete = AsyncMock(return_value="ok")
+    tier = PolishTier(client=client)
+
+    # Build a 1 MB transcript with a unique head sentinel and tail sentinel.
+    head_sentinel = "SESSION_OPENING_UNIQUE_MARKER"
+    tail_sentinel = "SESSION_ENDING_UNIQUE_MARKER"
+    # 1 MB total — well over the 100k-char limit
+    filler = "x" * 1_000_000
+    huge = head_sentinel + filler + tail_sentinel
+
+    await tier.run(final_distillation=Distillation.empty(), full_transcript=huge)
+
+    fresh = client.complete.await_args.kwargs["fresh_input"]
+    assert head_sentinel in fresh, (
+        "Head of transcript missing — session brief was dropped by tail-only truncation"
+    )
+    assert tail_sentinel in fresh, (
+        "Tail of transcript missing — most-recent context was lost"
+    )
+    assert "truncated" in fresh.lower(), (
+        "Truncation marker not found — middle was not replaced with ellipsis"
+    )
+
+
 # ---------------------------------------------------------------------------
 # B. _on_shutdown writes distillation.md even when PolishTier raises
 # ---------------------------------------------------------------------------
