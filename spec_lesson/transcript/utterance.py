@@ -5,6 +5,11 @@ from typing import Optional
 
 log = logging.getLogger(__name__)
 
+# SEC-4: cap per-utterance text to prevent a single huge frame from consuming
+# unbounded RAM in RollingTranscript, blocking the event loop on os.fsync, and
+# sending a 100 MB context to the Anthropic API.
+MAX_UTTERANCE_TEXT_CHARS = 8_000
+
 
 @dataclass(frozen=True)
 class Utterance:
@@ -29,12 +34,23 @@ class Utterance:
         Logs a warning and returns None on any KeyError or TypeError so
         callers (e.g. Orchestrator.ingest) can skip bad frames without
         crashing the event loop.
+
+        SEC-4: truncates text longer than MAX_UTTERANCE_TEXT_CHARS to prevent
+        DoS via huge utterances (memory, fsync block, API context explosion).
         """
         try:
+            text = str(data["text"])
+            if len(text) > MAX_UTTERANCE_TEXT_CHARS:
+                log.warning(
+                    "truncating utterance text from %d to %d chars",
+                    len(text),
+                    MAX_UTTERANCE_TEXT_CHARS,
+                )
+                text = text[:MAX_UTTERANCE_TEXT_CHARS]
             return cls(
                 timestamp=float(data["timestamp"]),
                 speaker=str(data["speaker"]),
-                text=str(data["text"]),
+                text=text,
                 is_final=bool(data["is_final"]),
             )
         except (KeyError, TypeError, ValueError) as exc:
