@@ -68,7 +68,7 @@ Full design doc: [`docs/superpowers/specs/2026-04-22-spec-lesson-design.md`](../
 See [`CONTRIBUTING.md`](../CONTRIBUTING.md) at the repo root.
 
 ```bash
-# Run the full test suite (218 tests)
+# Run the full test suite (219 tests)
 pip install -e ".[dev]"
 pytest -q
 ```

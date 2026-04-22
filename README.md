@@ -223,7 +223,7 @@ Session artefacts are written to `.spec-lesson/` in the current directory:
 
 **Source layout:** `spec_lesson/` — tiers in `tiers/`, audio capture in `capture/`, HUD in `hud/`, transcript persistence in `transcript/`, rollup in `rollup/`.
 
-Tests: `pytest tests/` (132 passing, no external API calls — set `SPEC_LESSON_FAKE_API=1`).
+Tests: `pytest tests/` (219 passing, no external API calls — set `SPEC_LESSON_FAKE_API=1`).
 
 ---
 

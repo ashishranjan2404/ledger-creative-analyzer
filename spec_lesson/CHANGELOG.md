@@ -44,7 +44,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `rollup --since-hours` — configurable window with validation
 - `rollup --out` — safe path restriction to home / cwd / tmp
 
-### Fixed (rounds 3–12)
+### Fixed (rounds 3–16)
 
 - **R3** — Serialize concurrent Context tier runs to prevent transcript races; move system prompt into cached block; use context manager for Deepgram connect
 - **R4** — Observer callback exceptions don't kill tier runners; parse bulleted sections across empty section boundaries; skip unreadable session files in rollup; call `on_polish` at session close; unify `DriftLabel` across tiers and HUD
@@ -56,6 +56,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **R10** — Remove dead `_PauseWatcherState` fields; `Orchestrator.override_pause_settings` for tests; 7 E2E scenario tests
 - **R11** — Suppress spurious `ImmediateTier` fire on hibernate resume (FAULT-5); `__all__` exports to tier/transcript/HUD packages (TYPE-10); graceful import errors for numpy/sounddevice (FAULT-9); XML-wrap transcript content in all tier `fresh_input` (SEC-7); startup warning for verbatim transcript persistence (SEC-5); `rollup --out` safe path restriction (SEC-6)
 - **R12** — Rename `now` → `audio_ts` in tier APIs, `reference_ts` in `RollingTranscript.tail`, `wall_clock_ts` in `TriggerDetector.check`; `status` shows session start time + elapsed (UX-5); `stop`/`status` wrong-cwd hint (UX-10); strengthen weak assertions (#10 scheduler upper-bound, #11 polish `use_cache`, #12 rollup dedup section-scoped)
+- **R13** — Open-source readiness: package README (pitch, quickstart, arch), MIT LICENSE, CONTRIBUTING.md (test/ralf/style), CI workflow (path-filtered), py.typed marker, examples/basic_usage.sh (FAKE_API fixture)
+- **R14** — stdin file redirect fallback (was: pipe-only); test coverage for edge-case input modes
+- **R15** — mypy clean pass (0 errors): fixed method-assign, no-redef, attr-defined issues in cli.py and hud/renderer.py; added [tool.mypy] config
+- **R16** — Replace deprecated asyncio.get_event_loop() with get_running_loop(); fix audio-error elapsed time computation (session-relative instead of boot-relative); assert-narrows type-ignore on PauseWatcher.mark_fired()
 
 ---
 
