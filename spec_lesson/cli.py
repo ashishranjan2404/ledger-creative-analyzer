@@ -178,13 +178,40 @@ def start(
             asyncio.run(main_no_stdin())
 
 
+def _read_pid_file(pid_file: Path) -> tuple[int | None, str]:
+    """Parse a spec-lesson PID file.
+
+    Returns ``(pid, error_message)``.  On success ``error_message`` is ``""``.
+    SEC-3: the file must start with the ``spec-lesson`` header line so we can
+    distinguish our own PID files from arbitrary integers written by other tools
+    or a recycled-PID attack.
+    """
+    from spec_lesson.lifecycle import PID_FILE_HEADER  # avoid circular at module level
+    if not pid_file.exists():
+        return None, "not_found"
+    content = pid_file.read_text()
+    lines = content.splitlines()
+    if not lines or lines[0] != PID_FILE_HEADER or len(lines) < 2:
+        return None, "bad_header"
+    try:
+        return int(lines[1]), ""
+    except ValueError:
+        return None, "corrupt"
+
+
 @app.command()
 def status():
     pid_file = Path.cwd() / ".spec-lesson" / "daemon.pid"
-    if not pid_file.exists():
+    pid, err = _read_pid_file(pid_file)
+    if err == "not_found":
         typer.echo("spec-lesson: not running")
         return
-    pid = int(pid_file.read_text().strip())
+    if err in ("bad_header", "corrupt"):
+        typer.secho(
+            "spec-lesson: PID file not written by spec-lesson; ignoring",
+            fg=typer.colors.YELLOW,
+        )
+        return
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -217,10 +244,19 @@ def rollup(
 @app.command()
 def stop():
     pid_file = Path.cwd() / ".spec-lesson" / "daemon.pid"
-    if not pid_file.exists():
+    pid, err = _read_pid_file(pid_file)
+    if err == "not_found":
         typer.echo("spec-lesson: not running")
         raise typer.Exit(1)
-    pid = int(pid_file.read_text().strip())
+    if err in ("bad_header", "corrupt"):
+        # SEC-3: refuse to send SIGTERM to an unvalidated PID — could kill an
+        # unrelated process if the OS recycled the PID or another tool wrote
+        # the file.
+        typer.secho(
+            "spec-lesson: PID file not written by spec-lesson; refusing to signal",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(2)
     import signal
     os.kill(pid, signal.SIGTERM)
     typer.echo(f"spec-lesson: sent SIGTERM to pid {pid}")

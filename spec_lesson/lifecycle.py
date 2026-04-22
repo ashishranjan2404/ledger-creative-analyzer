@@ -8,6 +8,12 @@ from typing import Awaitable, Callable
 # Helpers
 # ---------------------------------------------------------------------------
 
+# SEC-3: first line of every PID file written by spec-lesson.  `stop` refuses
+# to signal a PID file that does not carry this header, preventing accidental
+# SIGTERM to a recycled PID that was written by a different tool.
+PID_FILE_HEADER = "spec-lesson"
+
+
 def _pid_is_alive(pid: int) -> bool:
     """Return True if *pid* refers to a running process on this machine."""
     try:
@@ -35,15 +41,22 @@ class SessionLifecycle:
         two concurrent starts in the same state dir cannot silently overwrite
         each other (RES-8 / EDGE-2).
 
+        SEC-3: the file is written with a ``spec-lesson`` header on line 1 and
+        the PID on line 2.  ``stop`` reads the header before sending SIGTERM
+        so it can refuse to signal a PID file not written by this tool.
+        File mode is 0o600 (owner-readable only) to limit exposure on shared
+        machines.
+
         Behaviour:
           • No existing PID file  → write and return.
-          • Existing file, PID alive  → raise RuntimeError.
-          • Existing file, PID dead (stale lock)  → unlink and retry once.
+          • Existing file with header + alive PID  → raise RuntimeError.
+          • Existing file, stale or corrupt  → unlink and retry once.
         """
-        pid_bytes = str(os.getpid()).encode()
+        pid_content = f"{PID_FILE_HEADER}\n{os.getpid()}\n"
+        pid_bytes = pid_content.encode()
 
         def _write_exclusive(path: Path) -> None:
-            fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+            fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
             try:
                 os.write(fd, pid_bytes)
             finally:
@@ -52,9 +65,12 @@ class SessionLifecycle:
         try:
             _write_exclusive(self.pid_file)
         except FileExistsError:
-            # Read the existing PID and decide whether it is still alive.
+            # Read the existing file and decide whether it is still alive.
+            existing_pid: int | None = None
             try:
-                existing_pid = int(self.pid_file.read_text().strip())
+                lines = self.pid_file.read_text().splitlines()
+                if lines and lines[0] == PID_FILE_HEADER and len(lines) >= 2:
+                    existing_pid = int(lines[1])
             except (ValueError, OSError):
                 existing_pid = None
 
@@ -64,7 +80,7 @@ class SessionLifecycle:
                     f"Kill it or remove {self.pid_file} if it is stale."
                 )
 
-            # Stale lock — remove and write our PID.
+            # Stale or corrupt lock — remove and write our PID.
             try:
                 self.pid_file.unlink()
             except FileNotFoundError:
