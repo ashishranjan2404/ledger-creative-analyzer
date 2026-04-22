@@ -1,11 +1,9 @@
 import json
 from dataclasses import dataclass
-from typing import Literal
+from .base import DriftLabel
 from .client import AnthropicClient
 from .prompts import THREAD_SYSTEM
 from ..transcript.buffer import RollingTranscript
-
-DriftLabel = Literal["on", "drifting", "unknown"]
 
 
 @dataclass

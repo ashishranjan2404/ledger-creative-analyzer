@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
-from typing import Literal
+from ..tiers.base import DriftLabel
 
-DriftLabel = Literal["on", "drifting", "unknown"]
+__all__ = ["DriftLabel", "TierEvent", "HudState", "TimelineCap"]
 TimelineCap = 50
 
 @dataclass

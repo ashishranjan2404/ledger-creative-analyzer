@@ -29,3 +29,10 @@ def test_set_drift_on_topic():
     assert s.drift == "on"
     assert s.topic == "API design"
     assert s.drift_from == "API design"
+
+
+def test_drift_label_is_single_source():
+    from spec_lesson.tiers.base import DriftLabel as TiersLabel
+    from spec_lesson.hud.state import DriftLabel as HudLabel
+    # Must be the SAME Literal object, not two parallel Literals
+    assert TiersLabel is HudLabel
