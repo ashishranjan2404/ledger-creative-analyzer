@@ -25,9 +25,18 @@ def _dedupe_case_insensitive(items_by_session: list[tuple[str, list[str]]]) -> l
     return list(first_seen.values())
 
 
-def render_rollup(notes: list[SessionNote], window_label: str = "last 24 hours") -> str:
+def render_rollup(notes: list[SessionNote], window_label: str = "last 24 hours", since_hours: float = 24.0, root=None) -> str:
     if not notes:
-        return f"# spec-lesson rollup — {window_label}\n\nNo sessions in window.\n"
+        root_display = root.expanduser() if root is not None else "~"
+        return (
+            f"# spec-lesson rollup — {window_label}\n\n"
+            f"No sessions found in the last {since_hours:g}h "
+            f"(searched under `{root_display}`).\n\n"
+            f"Tips:\n"
+            f"- Widen the window: `spec-lesson rollup --since-hours 168`\n"
+            f"- Check the search root: `spec-lesson rollup --root /your/projects`\n"
+            f"- Sessions are stored in `.spec-lesson/session-*.md` inside each project\n"
+        )
 
     # Aggregate
     decisions = _dedupe_case_insensitive([(n.title, n.decisions) for n in notes])
