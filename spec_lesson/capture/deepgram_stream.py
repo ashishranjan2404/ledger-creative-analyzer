@@ -13,6 +13,7 @@ from typing import Any, Callable, Optional
 log = logging.getLogger(__name__)
 
 UtteranceCallback = Callable[[dict], None]
+ErrorCallback = Callable[[str], None]  # reason string, e.g. "WebSocket closed by remote"
 
 
 class DeepgramStream:
@@ -29,6 +30,11 @@ class DeepgramStream:
     lifetime.  We enter the contextmanager inside the pump thread and signal
     readiness via a threading.Event so that start() can safely return only
     after the socket is established (or fail fast if connect fails within 10s).
+
+    Implicit keepalive: AudioCapture._run delivers silence frames (all-zero bytes)
+    at 10ms intervals even when the mic is muted.  These frames keep the Deepgram
+    WebSocket alive without a separate ping loop.  In --transcript-stdin mode
+    DeepgramStream is never started, so no keepalive is needed.
     """
 
     def __init__(self, api_key: str, dg_sdk: Optional[Any] = None, model: str = "nova-3"):
@@ -39,24 +45,41 @@ class DeepgramStream:
         self._model = model
         self._socket = None
         self._callback: Optional[UtteranceCallback] = None
+        self._error_callback: Optional[ErrorCallback] = None
         self._pump_thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
         self._ready: Optional[threading.Event] = None
+        # Set True inside the with-block to indicate the connect() succeeded.
+        # Stays True even after finally clears _socket so start() can distinguish
+        # a fast-exiting-but-valid connection from an auth failure.
+        self._connected_ok: bool = False
 
     def on_utterance(self, callback: UtteranceCallback) -> None:
         self._callback = callback
 
+    def on_error(self, callback: ErrorCallback) -> None:
+        """Register a callback fired when the pump exits unexpectedly (not via stop())."""
+        self._error_callback = callback
+
     def start(self) -> None:
         self._stop.clear()
+        self._connected_ok = False
         self._ready = threading.Event()
         self._pump_thread = threading.Thread(target=self._pump, daemon=True)
         self._pump_thread.start()
         # Wait for the pump thread to enter the contextmanager and set self._socket.
         if not self._ready.wait(timeout=10.0):
             raise RuntimeError("Deepgram stream failed to connect within 10s")
+        if not self._connected_ok:
+            # Pump set _ready via the finally branch — connection failed (e.g. 401 auth error).
+            raise RuntimeError(
+                "Deepgram stream failed to connect (check DEEPGRAM_API_KEY and network)"
+            )
 
     def _pump(self) -> None:
         """Enter the Deepgram contextmanager, signal readiness, then drain messages."""
+        _clean_exit = False
+        _reason = "WebSocket closed by remote"
         try:
             with self._sdk.listen.v1.connect(
                 model=self._model,
@@ -69,23 +92,37 @@ class DeepgramStream:
                 channels=1,
             ) as socket:
                 self._socket = socket
+                self._connected_ok = True
                 if self._ready is not None:
                     self._ready.set()
                 for msg in socket:
                     if self._stop.is_set():
+                        _clean_exit = True
                         break
                     try:
                         self.process_message(msg)
                     except Exception:
                         # one bad message shouldn't kill the pump
                         continue
+                # for-loop ended; determine whether this was a clean (stop()-initiated)
+                # exit or an unexpected remote close.
+                if self._stop.is_set():
+                    _clean_exit = True   # stop() was called before or during the loop
+                else:
+                    _clean_exit = False  # remote closed without our stop()
         except Exception as e:
             log.warning("Deepgram pump exited: %s", e)
+            _reason = str(e) or "unknown error"
         finally:
             self._socket = None
             # Unblock start() if we never got to set _ready inside the with-block.
             if self._ready is not None and not self._ready.is_set():
                 self._ready.set()
+            if not _clean_exit and self._error_callback is not None:
+                try:
+                    self._error_callback(_reason)
+                except Exception:
+                    pass
 
     def process_message(self, result: Any) -> Optional[dict]:
         """Convert a Deepgram result into an utterance dict (or None) and fire the callback."""

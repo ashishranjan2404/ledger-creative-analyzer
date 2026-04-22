@@ -51,6 +51,17 @@ class HudObserver:
         with self._lock:
             self._append(TierEvent(at=at, kind="polish", summary="session polished"))
 
+    def on_audio_disconnect(self, at: float, reason: str) -> None:
+        """Called when the Deepgram pump exits unexpectedly. Thread-safe."""
+        with self._lock:
+            self._state.audio_disconnected = True
+            self._state.audio_disconnect_at = at
+            self._append(TierEvent(
+                at=at,
+                kind="audio_error",
+                summary=f"audio disconnected: {reason}",
+            ))
+
     def tick(self, elapsed: float) -> None:
         with self._lock:
             self._state.elapsed_seconds = elapsed

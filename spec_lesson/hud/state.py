@@ -35,6 +35,8 @@ class HudState:
     elapsed_seconds: float
     max_seconds: float
     trigger_fired_at: float | None = None
+    audio_disconnected: bool = False       # set True when Deepgram pump dies unexpectedly
+    audio_disconnect_at: float | None = None  # elapsed seconds when it happened
 
     @classmethod
     def initial(cls, max_seconds: float = 5400.0) -> "HudState":
