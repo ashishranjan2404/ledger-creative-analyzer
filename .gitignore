@@ -43,3 +43,4 @@ node_modules/
 .spec-lesson/
 dist/
 build/
+CLAUDE.md.tmp.*

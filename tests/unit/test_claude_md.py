@@ -40,5 +40,18 @@ def test_atomic_rewrite_does_not_leave_tmp_files(tmp_path: Path):
     w.write_managed_section("a")
     w.write_managed_section("b")
     w.write_managed_section("c")
-    tmp_files = list(tmp_path.glob("CLAUDE.md.tmp*"))
-    assert tmp_files == []
+    # No CLAUDE.md.tmp.* orphans should remain after successful atomic writes.
+    tmp_files = list(tmp_path.glob("CLAUDE.md.tmp.*"))
+    assert tmp_files == [], f"Unexpected tmp files left after write: {tmp_files}"
+
+
+def test_gitignore_covers_claude_md_tmp_pattern():
+    """SHUTDOWN-3: .gitignore must contain CLAUDE.md.tmp.* so SIGKILL orphans
+    don't show up in git status."""
+    from pathlib import Path
+    gitignore = Path(__file__).parents[2] / ".gitignore"
+    assert gitignore.exists(), ".gitignore not found at repo root"
+    content = gitignore.read_text(encoding="utf-8")
+    assert "CLAUDE.md.tmp.*" in content, (
+        ".gitignore is missing CLAUDE.md.tmp.* — orphan tmp files will appear in git status after SIGKILL"
+    )
