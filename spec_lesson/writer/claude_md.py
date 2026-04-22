@@ -16,7 +16,13 @@ class ClaudeMdWriter:
         self.path = Path(path)
 
     def write_managed_section(self, body: str) -> None:
-        block = f"{START_MARKER}\n{body}\n{END_MARKER}"
+        # SEC-1: strip literal marker strings from body to prevent the non-greedy
+        # regex from terminating early on a fake end marker (e.g. LLM echoes the
+        # marker text from a transcript).  Replace with a visually distinct but
+        # harmless form so the content is preserved.
+        safe_body = body.replace(START_MARKER, START_MARKER.replace("<!-- ", "<!-- literal-"))
+        safe_body = safe_body.replace(END_MARKER, END_MARKER.replace("<!-- ", "<!-- literal-"))
+        block = f"{START_MARKER}\n{safe_body}\n{END_MARKER}"
         if self.path.exists():
             existing = self.path.read_text(encoding="utf-8")
             if _SECTION_RE.search(existing):

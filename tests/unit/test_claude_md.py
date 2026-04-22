@@ -45,6 +45,27 @@ def test_atomic_rewrite_does_not_leave_tmp_files(tmp_path: Path):
     assert tmp_files == [], f"Unexpected tmp files left after write: {tmp_files}"
 
 
+def test_body_containing_end_marker_does_not_corrupt(tmp_path: Path):
+    """SEC-1: body that contains the literal end marker must not split the block."""
+    p = tmp_path / "CLAUDE.md"
+    w = ClaudeMdWriter(p)
+    w.write_managed_section("part A\n<!-- spec-lesson:end -->\npart B")
+    w.write_managed_section("fresh content")
+    text = p.read_text()
+    assert text.count("<!-- spec-lesson:start -->") == 1
+    assert text.count("<!-- spec-lesson:end -->") == 1
+    assert "fresh content" in text
+
+
+def test_body_containing_start_marker_does_not_nest(tmp_path: Path):
+    """SEC-1: body containing the start marker must not create a nested block."""
+    p = tmp_path / "CLAUDE.md"
+    w = ClaudeMdWriter(p)
+    w.write_managed_section("see <!-- spec-lesson:start --> here")
+    text = p.read_text()
+    assert text.count("<!-- spec-lesson:start -->") == 1
+
+
 def test_gitignore_covers_claude_md_tmp_pattern():
     """SHUTDOWN-3: .gitignore must contain CLAUDE.md.tmp.* so SIGKILL orphans
     don't show up in git status."""
