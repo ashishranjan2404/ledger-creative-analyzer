@@ -9,7 +9,7 @@ is safe to call from any thread.
 import asyncio
 import logging
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional, Protocol
 
@@ -60,6 +60,50 @@ class OrchestratorConfig:
     immediate_min_interval: float = 10.0  # seconds between consecutive fires
 
 
+@dataclass
+class _PauseWatcherState:
+    """Encapsulates pause-detection state and logic for the Immediate tier gate.
+
+    Extracted from Orchestrator to consolidate the four scattered rate-limit
+    fields (check_interval, pause_threshold, min_utterances, min_interval) and
+    reduce cyclomatic complexity of ``_pause_watcher`` from 8 branches to 2.
+    """
+    check_interval: float
+    pause_threshold: float
+    min_utterances: int
+    min_interval: float
+    last_fired_for_ts: Optional[float] = None
+    last_fired_monotonic: float = 0.0
+    last_utterance_monotonic: float = field(default_factory=time.monotonic)
+
+    def on_utterance_received(self, now_mono: float) -> None:
+        """Update the last-utterance wall-clock marker."""
+        self.last_utterance_monotonic = now_mono
+
+    def should_fire(
+        self,
+        latest_ts: Optional[float],
+        utterance_count: int,
+        now_mono: float,
+    ) -> bool:
+        """Return True iff all gates pass and a pause has been detected."""
+        if latest_ts is None:
+            return False
+        if utterance_count < self.min_utterances:
+            return False
+        if self.last_fired_for_ts == latest_ts:
+            return False
+        if now_mono - self.last_fired_monotonic < self.min_interval:
+            return False
+        elapsed_since_speech = now_mono - self.last_utterance_monotonic
+        return elapsed_since_speech >= self.pause_threshold
+
+    def mark_fired(self, latest_ts: float, now_mono: float) -> None:
+        """Record that the Immediate tier just fired for *latest_ts*."""
+        self.last_fired_for_ts = latest_ts
+        self.last_fired_monotonic = now_mono
+
+
 class Orchestrator:
     """Wire and run all spec-lesson subsystems for one session.
 
@@ -100,15 +144,13 @@ class Orchestrator:
         self._lifecycle = SessionLifecycle(state_dir=session.state_dir, max_seconds=config.max_seconds)
         self._lifecycle.on_shutdown(self._on_shutdown)
 
-        # pause detection for Immediate tier
-        self._pause_check_interval = config.pause_check_interval
-        self._pause_threshold = config.pause_threshold
-        self._last_immediate_for_ts: Optional[float] = None
-        self._utterance_received_monotonic = time.monotonic()
-        # COST-2: rate-limiting state for Immediate tier
-        self._immediate_min_utterances = config.immediate_min_utterances
-        self._immediate_min_interval = config.immediate_min_interval
-        self._last_immediate_fire_monotonic: float = 0.0
+        # COST-2 / pause detection: all rate-limit state lives in one dataclass.
+        self._pause_watcher_state = _PauseWatcherState(
+            check_interval=config.pause_check_interval,
+            pause_threshold=config.pause_threshold,
+            min_utterances=config.immediate_min_utterances,
+            min_interval=config.immediate_min_interval,
+        )
 
         # RES-2 / Fix 7: shutdown guard — set to True as the FIRST action
         # inside _on_shutdown so _pause_watcher stops before teardown begins.
@@ -194,29 +236,18 @@ class Orchestrator:
                 log.warning("observer.on_immediate failed: %s", e)
 
     async def _pause_watcher(self) -> None:
-        """Fire ImmediateTier when no new utterance has arrived for >_pause_threshold seconds."""
+        """Fire ImmediateTier when no new utterance has arrived for >pause_threshold seconds."""
+        pw = self._pause_watcher_state
         while not self._lifecycle.is_stopping:
-            await asyncio.sleep(self._pause_check_interval)
+            await asyncio.sleep(pw.check_interval)
             # RES-2 / Fix 7: do NOT fire _run_immediate after _on_shutdown has
             # started tearing down audio — check the flag after each sleep.
             if self._shutting_down:
                 return
             latest = self.buffer.latest_timestamp()
-            if latest is None:
-                continue
-            # COST-2: require a minimum number of utterances before the first fire.
-            if len(self.buffer.all()) < self._immediate_min_utterances:
-                continue
-            if self._last_immediate_for_ts == latest:
-                continue
-            # COST-2: enforce a minimum wall-clock interval between fires.
             now_mono = time.monotonic()
-            if now_mono - self._last_immediate_fire_monotonic < self._immediate_min_interval:
-                continue
-            elapsed = now_mono - self._utterance_received_monotonic
-            if elapsed >= self._pause_threshold:
-                self._last_immediate_for_ts = latest
-                self._last_immediate_fire_monotonic = now_mono
+            if pw.should_fire(latest, len(self.buffer.all()), now_mono):
+                pw.mark_fired(latest, now_mono)  # type: ignore[arg-type]
                 try:
                     await self._run_immediate()
                 except Exception as e:
@@ -299,7 +330,7 @@ class Orchestrator:
 
     def _on_utterance_from_audio(self, utterance_dict: dict) -> None:
         """Bridge callback from audio source: mark wall-clock + ingest."""
-        self._utterance_received_monotonic = time.monotonic()
+        self._pause_watcher_state.on_utterance_received(time.monotonic())
         self.ingest(utterance_dict)
 
     async def _hud_tick_task(self) -> None:
@@ -320,7 +351,7 @@ class Orchestrator:
         self._loop = asyncio.get_event_loop()
         self._session_start = time.monotonic()
         self._lifecycle.install_signal_handlers()
-        self._utterance_received_monotonic = time.monotonic()
+        self._pause_watcher_state.on_utterance_received(time.monotonic())
         if self.audio_source is not None:
             self.audio_source.on_utterance(self._on_utterance_from_audio)
             self.audio_source.start()

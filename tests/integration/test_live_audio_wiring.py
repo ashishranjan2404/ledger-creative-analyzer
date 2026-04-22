@@ -77,8 +77,8 @@ async def test_pause_fires_immediate_tier(tmp_path: Path):
         immediate_min_interval=0.0,
     )
     orch = Orchestrator(session=session, client=client, config=cfg, audio_source=source)
-    orch._pause_check_interval = 0.1
-    orch._pause_threshold = 0.3
+    orch._pause_watcher_state.check_interval = 0.1
+    orch._pause_watcher_state.pause_threshold = 0.3
 
     fired = []
     original = orch._run_immediate
