@@ -79,7 +79,7 @@ class AudioIngress:
             return  # malformed frame — warning already logged in safe_from_dict
         self.buffer.append(u)
         self.transcript_writer.append(u)
-        if u.is_final and self.trigger.check(u.text, now=u.timestamp):
+        if u.is_final and self.trigger.check(u.text, wall_clock_ts=u.timestamp):
             self.trigger.log_fire(self._triggers_log_path, u.text)
             if self._on_trigger_fired is not None:
                 try:

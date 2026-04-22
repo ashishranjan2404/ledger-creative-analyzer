@@ -38,11 +38,12 @@ class TriggerDetector:
         """Number of times check() has returned True (trigger matched + cooldown passed)."""
         return self._fire_count
 
-    def check(self, text: str, now: float) -> bool:
+    def check(self, text: str, wall_clock_ts: float) -> bool:
         """Return True if *text* matches the trigger pattern and the cooldown has elapsed.
 
-        *now* is kept for API compatibility but is no longer used for cooldown
-        calculations; wall-clock ``time.monotonic()`` is used instead.
+        *wall_clock_ts* is a wall-clock monotonic timestamp (``time.monotonic()``).
+        It is kept for API compatibility but the actual cooldown uses a fresh
+        ``time.monotonic()`` call internally to avoid stale-value bugs.
         """
         normalized = normalize(text)
         if not _TRIGGER_PATTERN.search(normalized):
