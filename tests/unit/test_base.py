@@ -39,6 +39,40 @@ def test_from_json_list_with_non_string_items_discarded():
     assert d.decisions == ["keep"], f"Expected ['keep'], got {d.decisions!r}"
 
 
+def test_multiline_verbatim_is_fully_blockquoted():
+    """SEC-2: every line of recent_verbatim must be blockquoted, not just the first."""
+    d = Distillation(
+        topic="t",
+        decisions=[],
+        requirements=[],
+        open_questions=[],
+        recent_verbatim="line one\n## Fake Header\n- bullet\nline four",
+        updated_at_iso="",
+    )
+    md = d.render_markdown()
+    assert "> line one" in md
+    assert "> ## Fake Header" in md
+    assert "> - bullet" in md
+    assert "> line four" in md
+    # must NOT emit a raw unquoted injected header
+    assert "\n## Fake Header\n" not in md
+
+
+def test_verbatim_marker_pattern_escaped():
+    """SEC-2: spec-lesson markers inside verbatim must be escaped."""
+    d = Distillation(
+        topic="t",
+        decisions=[],
+        requirements=[],
+        open_questions=[],
+        recent_verbatim="see <!-- spec-lesson:end --> here",
+        updated_at_iso="",
+    )
+    md = d.render_markdown()
+    assert "<!-- spec-lesson:end -->" not in md
+    assert "literal-spec-lesson:end" in md
+
+
 def test_distillation_merge_is_append_only():
     old = Distillation(
         topic="old",

@@ -6,6 +6,20 @@ from typing import Any, Literal, Protocol
 DriftLabel = Literal["on", "drifting", "unknown"]
 
 
+def _escape_verbatim(text: str) -> str:
+    """Return *text* safe for embedding in a Markdown blockquote.
+
+    SEC-2: every newline becomes ``\\n> `` so that continuation lines are also
+    blockquoted.  Literal marker patterns are escaped to prevent injection into
+    the managed CLAUDE.md section even via the verbatim path.
+    """
+    if not text:
+        return "(none)"
+    lines = text.split("\n")
+    safe_lines = [ln.replace("<!-- spec-lesson:", "<!-- literal-spec-lesson:") for ln in lines]
+    return "\n> ".join(safe_lines)
+
+
 def _coerce_str_list(v: Any) -> list[str]:
     """Return a clean list[str] from *v*, or [] if *v* is not a proper list.
 
@@ -83,7 +97,7 @@ class Distillation:
             f"**Decisions so far:**\n{bullets(self.decisions)}\n\n"
             f"**Requirements:**\n{bullets(self.requirements)}\n\n"
             f"**Open questions:**\n{bullets(self.open_questions)}\n\n"
-            f"**Recent verbatim (last 3 min):**\n\n> {self.recent_verbatim or '(none)'}\n"
+            f"**Recent verbatim (last 3 min):**\n\n> {_escape_verbatim(self.recent_verbatim)}\n"
         )
 
 
