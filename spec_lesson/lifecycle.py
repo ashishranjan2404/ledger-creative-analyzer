@@ -1,8 +1,18 @@
+"""Session lifecycle: PID file locking, signal handling, and max-duration cap.
+
+``SessionLifecycle`` owns the exclusive PID file (O_CREAT|O_EXCL), installs
+SIGINT/SIGTERM handlers, and exposes ``run_until_done()`` which blocks until
+either a stop signal arrives or the max-seconds wall-clock cap elapses, then
+drains registered async shutdown hooks before returning.
+"""
 import asyncio
+import logging
 import os
 import signal
 from pathlib import Path
 from typing import Awaitable, Callable
+
+log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -28,6 +38,15 @@ ShutdownHook = Callable[[], Awaitable[None]]
 
 
 class SessionLifecycle:
+    """Manage the process lifetime of a single spec-lesson session.
+
+    On construction creates the ``.spec-lesson/`` state directory.  Call
+    ``run_until_done()`` after starting the event loop; it writes the PID file,
+    blocks until SIGINT/SIGTERM or the max-seconds cap, runs shutdown hooks, then
+    removes the PID file.  Hooks registered via ``on_shutdown()`` are awaited in
+    order and must not raise — exceptions are swallowed to guarantee cleanup.
+    """
+
     def __init__(self, state_dir: Path, max_seconds: float):
         self.state_dir = Path(state_dir)
         self.state_dir.mkdir(parents=True, exist_ok=True)
@@ -92,6 +111,8 @@ class SessionLifecycle:
             self.pid_file.unlink()
         except FileNotFoundError:
             pass
+        except OSError as e:
+            log.warning("could not clear pid file %s: %s", self.pid_file, e)
 
     def on_shutdown(self, hook: ShutdownHook) -> None:
         self._shutdown_hooks.append(hook)

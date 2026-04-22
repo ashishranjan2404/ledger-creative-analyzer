@@ -55,3 +55,21 @@ def test_is_stopping_reflects_stop_event(tmp_path):
     assert life.is_stopping is False
     life.request_stop()
     assert life.is_stopping is True
+
+
+def test_clear_pid_file_tolerates_readonly(tmp_path, monkeypatch):
+    import pathlib
+    from spec_lesson.lifecycle import SessionLifecycle
+    life = SessionLifecycle(state_dir=tmp_path / "x", max_seconds=60.0)
+    life.write_pid_file()
+    # monkeypatch unlink to raise PermissionError
+    original_unlink = pathlib.Path.unlink
+
+    def boom(self, missing_ok=False):
+        raise PermissionError("read-only fs")
+
+    monkeypatch.setattr(pathlib.Path, "unlink", boom)
+    # should NOT raise
+    life.clear_pid_file()
+    # restore so tmp_path cleanup works
+    monkeypatch.setattr(pathlib.Path, "unlink", original_unlink)
