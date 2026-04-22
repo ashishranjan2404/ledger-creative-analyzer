@@ -8,6 +8,7 @@ import asyncio
 import json
 import logging
 import os
+import stat
 import sys
 import time
 from datetime import datetime, timezone
@@ -198,22 +199,46 @@ def start(
 
     if transcript_stdin:
         async def feed_stdin():
-            loop = asyncio.get_running_loop()
-            reader = asyncio.StreamReader()
-            protocol = asyncio.StreamReaderProtocol(reader)
-            await loop.connect_read_pipe(lambda: protocol, sys.stdin)
-            while True:
-                line = await reader.readline()
-                if not line:
-                    break
-                line_s = line.decode("utf-8").strip()
-                if not line_s:
-                    continue
-                try:
-                    payload = json.loads(line_s)
-                except json.JSONDecodeError:
-                    continue
-                orch.ingest(payload)
+            # Detect whether stdin is a pipe/socket or a regular file.
+            # asyncio.connect_read_pipe only works on pipes/sockets, not regular files.
+            try:
+                mode = os.fstat(sys.stdin.fileno()).st_mode
+                is_pipe_or_socket = stat.S_ISFIFO(mode) or stat.S_ISSOCK(mode)
+            except OSError:
+                is_pipe_or_socket = False
+
+            if is_pipe_or_socket:
+                # Original path: asyncio StreamReader on pipe/socket
+                loop = asyncio.get_running_loop()
+                reader = asyncio.StreamReader()
+                protocol = asyncio.StreamReaderProtocol(reader)
+                await loop.connect_read_pipe(lambda: protocol, sys.stdin)
+                while True:
+                    line = await reader.readline()
+                    if not line:
+                        break
+                    line_s = line.decode("utf-8").strip()
+                    if not line_s:
+                        continue
+                    try:
+                        payload = json.loads(line_s)
+                    except json.JSONDecodeError:
+                        continue
+                    orch.ingest(payload)
+            else:
+                # Fallback: regular file redirect; read synchronously in a worker thread
+                def _read_lines() -> list[str]:
+                    return sys.stdin.readlines()
+                lines = await asyncio.to_thread(_read_lines)
+                for raw in lines:
+                    s = raw.strip()
+                    if not s:
+                        continue
+                    try:
+                        payload = json.loads(s)
+                    except json.JSONDecodeError:
+                        continue
+                    orch.ingest(payload)
 
         if hud == "tk":
             import threading
