@@ -5,10 +5,13 @@ and optional BlackHole loopback), mixes them by averaging the int16 samples,
 and emits 16 kHz mono int16 PCM frames to a caller-supplied sink.  All stream
 management runs on a background daemon thread; call ``stop()`` to tear down.
 """
+import logging
 import threading
 from typing import Callable, Optional
 
 import numpy as np
+
+log = logging.getLogger(__name__)
 
 PcmSink = Callable[[bytes], None]
 
@@ -89,7 +92,11 @@ class AudioCapture:
                 loop_buf = None
                 if loop_stream is not None:
                     loop_buf, _ = loop_stream.read(self._frame_size)
-                self._mix_and_emit(bytes(mic_buf), bytes(loop_buf) if loop_buf is not None else None)
+                try:
+                    self._mix_and_emit(bytes(mic_buf), bytes(loop_buf) if loop_buf is not None else None)
+                except Exception as e:
+                    log.warning("AudioCapture sink raised: %s — stopping capture", e)
+                    break
         finally:
             for s in (mic_stream, loop_stream):
                 if s is not None:
