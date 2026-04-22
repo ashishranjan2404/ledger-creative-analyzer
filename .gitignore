@@ -37,3 +37,9 @@ node_modules/
 .secrets/
 *.credentials
 .claude/
+
+# spec-lesson
+.pytest_cache/
+.spec-lesson/
+dist/
+build/
