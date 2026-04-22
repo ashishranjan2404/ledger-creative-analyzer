@@ -159,6 +159,14 @@ def start(
         typer.secho("--hud must be one of: off, stdout, tk", fg=typer.colors.RED)
         raise typer.Exit(2)
 
+    # SEC-5: audio is transcribed and stored verbatim in JSONL.  Warn the user
+    # before any recording begins so they can avoid speaking secrets aloud.
+    typer.secho(
+        "spec-lesson: audio is recorded and persisted verbatim — avoid speaking passwords or secrets.",
+        fg=typer.colors.YELLOW,
+        err=True,
+    )
+
     project_dir = Path.cwd()
     try:
         session = Session.new(project_dir=project_dir)

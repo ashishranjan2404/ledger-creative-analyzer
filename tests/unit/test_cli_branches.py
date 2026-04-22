@@ -88,3 +88,21 @@ def test_version_flag_prints_version():
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
     assert f"spec-lesson {__version__}" in result.output
+
+
+# SEC-5 — startup warning about verbatim audio persistence
+def test_start_emits_secrets_warning(tmp_path: Path, monkeypatch):
+    """start must print a secrets-warning before recording begins.
+
+    Uses --transcript-stdin so we don't need audio hardware; exits immediately
+    via EOF on stdin.  The warning must be present in combined output.
+    """
+    monkeypatch.chdir(tmp_path)
+    # Provide empty stdin (immediate EOF) so feed_stdin exits and orch.run() times out
+    import os as _os
+    env = {**_os.environ, "SPEC_LESSON_MAX_SECONDS": "0.05", "SPEC_LESSON_FAKE_API": "1"}
+    result = runner.invoke(app, ["start", "--transcript-stdin"], env=env, input="")
+    combined = result.output + (result.stdout or "")
+    assert "verbatim" in combined.lower() or "secret" in combined.lower(), (
+        f"SEC-5: expected secrets warning in start output, got: {combined!r}"
+    )
