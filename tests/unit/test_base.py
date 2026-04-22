@@ -23,6 +23,22 @@ def test_distillation_from_json_tolerates_missing_fields():
     assert d.topic == "t"
     assert d.recent_verbatim == ""
 
+def test_from_json_string_field_treated_as_empty():
+    """BUG-D-2 / EDGE-3: a bare string in a list field must NOT be split into chars."""
+    raw = '{"topic":"t","decisions":"Use React","requirements":[],"open_questions":[]}'
+    d = Distillation.from_json(raw)
+    # Before fix: d.decisions == ['U','s','e',' ','R','e','a','c','t']
+    assert d.decisions == [], f"Expected empty list, got {d.decisions!r}"
+
+
+def test_from_json_list_with_non_string_items_discarded():
+    """BUG-D-2: non-string items inside a list field must be discarded."""
+    raw = '{"topic":"t","decisions":[1, 2, "keep"],"requirements":[],"open_questions":[]}'
+    d = Distillation.from_json(raw)
+    # integers must be dropped; only str items survive
+    assert d.decisions == ["keep"], f"Expected ['keep'], got {d.decisions!r}"
+
+
 def test_distillation_merge_is_append_only():
     old = Distillation(
         topic="old",

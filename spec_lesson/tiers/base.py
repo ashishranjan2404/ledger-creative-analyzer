@@ -3,6 +3,19 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 
+def _coerce_str_list(v: Any) -> list[str]:
+    """Return a clean list[str] from *v*, or [] if *v* is not a proper list.
+
+    Guards against two classes of bad LLM output:
+      • v is a bare string  → would silently become a list of single chars
+      • v is a list with non-string items (e.g. integers) → cast to str, drop
+        items that are not str at all
+    """
+    if not isinstance(v, list):
+        return []
+    return [x for x in v if isinstance(x, str)]
+
+
 @dataclass
 class Distillation:
     topic: str
@@ -21,9 +34,9 @@ class Distillation:
         data = json.loads(raw)
         return cls(
             topic=data.get("topic", ""),
-            decisions=list(data.get("decisions", [])),
-            requirements=list(data.get("requirements", [])),
-            open_questions=list(data.get("open_questions", [])),
+            decisions=_coerce_str_list(data.get("decisions", [])),
+            requirements=_coerce_str_list(data.get("requirements", [])),
+            open_questions=_coerce_str_list(data.get("open_questions", [])),
             recent_verbatim=data.get("recent_verbatim", ""),
             updated_at_iso=data.get("updated_at_iso", ""),
         )
