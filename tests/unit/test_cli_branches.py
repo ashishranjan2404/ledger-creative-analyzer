@@ -65,20 +65,66 @@ def test_read_pid_file_returns_corrupt_on_invalid_int(tmp_path: Path):
     from spec_lesson.cli import _read_pid_file
     pid_file = tmp_path / "daemon.pid"
     _write_pid_file(pid_file, f"{PID_FILE_HEADER}\nnot-an-int\n")
-    pid, err = _read_pid_file(pid_file)
+    pid, err, _started = _read_pid_file(pid_file)
     assert pid is None
     assert err == "corrupt"
 
 
 # cli.py:199-208 — _read_pid_file: empty file → bad_header
 def test_read_pid_file_returns_bad_header_on_empty_file(tmp_path: Path):
-    """_read_pid_file must return (None, 'bad_header') on empty file."""
+    """_read_pid_file must return (None, 'bad_header', None) on empty file."""
     from spec_lesson.cli import _read_pid_file
     pid_file = tmp_path / "daemon.pid"
     _write_pid_file(pid_file, "")
-    pid, err = _read_pid_file(pid_file)
+    pid, err, _started = _read_pid_file(pid_file)
     assert pid is None
     assert err == "bad_header"
+
+
+# UX-5 — status shows started_at and elapsed when pid file has line 3
+def test_status_shows_started_at_and_elapsed(tmp_path: Path, monkeypatch):
+    """UX-5: status must show started_at and elapsed when pid file contains ISO timestamp."""
+    from datetime import datetime, timezone, timedelta
+    pid_file = tmp_path / ".spec-lesson" / "daemon.pid"
+    # Write a pid file with an ISO timestamp ~5 minutes ago
+    started = datetime.now(timezone.utc) - timedelta(minutes=5)
+    started_iso = started.isoformat(timespec="seconds")
+    _write_pid_file(pid_file, f"{PID_FILE_HEADER}\n{os.getpid()}\n{started_iso}\n")
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["status"])
+    assert result.exit_code == 0
+    out = result.stdout
+    assert "running" in out.lower()
+    assert "started" in out.lower()
+    assert "elapsed" in out.lower()
+    # elapsed should show minutes
+    assert "m" in out  # e.g. "5m00s"
+
+
+# UX-10 — status shows wrong-cwd hint when pid file not found
+def test_status_shows_wrong_cwd_hint_when_not_running(tmp_path: Path, monkeypatch):
+    """UX-10: status must show a cwd hint when PID file is not present."""
+    monkeypatch.chdir(tmp_path)
+    # No .spec-lesson dir created at all
+    result = runner.invoke(app, ["status"])
+    assert result.exit_code == 0
+    # stdout has the "not running in <path>" message
+    assert "not running" in result.stdout.lower()
+    assert str(tmp_path) in result.stdout
+    # hint goes to stderr (typer CliRunner captures it in result.output or mix)
+    combined = result.output
+    assert "hint" in combined.lower() or "cd" in combined.lower() or ".spec-lesson" in combined.lower()
+
+
+# UX-10 — stop shows wrong-cwd hint when pid file not found
+def test_stop_shows_wrong_cwd_hint_when_not_running(tmp_path: Path, monkeypatch):
+    """UX-10: stop must show a cwd hint when PID file is not present."""
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(app, ["stop"])
+    assert result.exit_code == 1
+    combined = result.output
+    assert "not running" in combined.lower()
+    assert "hint" in combined.lower() or "cd" in combined.lower() or ".spec-lesson" in combined.lower()
 
 
 # cli.py — --version flag

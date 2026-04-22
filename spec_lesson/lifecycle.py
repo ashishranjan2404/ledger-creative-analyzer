@@ -9,6 +9,7 @@ import asyncio
 import logging
 import os
 import signal
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Awaitable, Callable
 
@@ -60,9 +61,11 @@ class SessionLifecycle:
         two concurrent starts in the same state dir cannot silently overwrite
         each other (RES-8 / EDGE-2).
 
-        SEC-3: the file is written with a ``spec-lesson`` header on line 1 and
-        the PID on line 2.  ``stop`` reads the header before sending SIGTERM
-        so it can refuse to signal a PID file not written by this tool.
+        SEC-3: the file is written with a ``spec-lesson`` header on line 1,
+        the PID on line 2, and the ISO-8601 UTC start timestamp on line 3.
+        ``stop`` reads the header before sending SIGTERM so it can refuse to
+        signal a PID file not written by this tool.  ``status`` reads line 3
+        to display how long the session has been running.
         File mode is 0o600 (owner-readable only) to limit exposure on shared
         machines.
 
@@ -71,7 +74,8 @@ class SessionLifecycle:
           • Existing file with header + alive PID  → raise RuntimeError.
           • Existing file, stale or corrupt  → unlink and retry once.
         """
-        pid_content = f"{PID_FILE_HEADER}\n{os.getpid()}\n"
+        started_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        pid_content = f"{PID_FILE_HEADER}\n{os.getpid()}\n{started_at}\n"
         pid_bytes = pid_content.encode()
 
         def _write_exclusive(path: Path) -> None:

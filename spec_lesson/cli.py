@@ -10,6 +10,7 @@ import logging
 import os
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -270,25 +271,46 @@ def start(
     )
 
 
-def _read_pid_file(pid_file: Path) -> tuple[int | None, str]:
+def _read_pid_file(pid_file: Path) -> tuple[int | None, str, str | None]:
     """Parse a spec-lesson PID file.
 
-    Returns ``(pid, error_message)``.  On success ``error_message`` is ``""``.
+    Returns ``(pid, error_message, started_at_iso)``.
+    On success ``error_message`` is ``""`` and ``started_at_iso`` is the ISO
+    timestamp from line 3 (or ``None`` for older 2-line files).
     SEC-3: the file must start with the ``spec-lesson`` header line so we can
     distinguish our own PID files from arbitrary integers written by other tools
     or a recycled-PID attack.
     """
     from spec_lesson.lifecycle import PID_FILE_HEADER  # avoid circular at module level
     if not pid_file.exists():
-        return None, "not_found"
+        return None, "not_found", None
     content = pid_file.read_text()
     lines = content.splitlines()
     if not lines or lines[0] != PID_FILE_HEADER or len(lines) < 2:
-        return None, "bad_header"
+        return None, "bad_header", None
     try:
-        return int(lines[1]), ""
+        pid = int(lines[1])
     except ValueError:
-        return None, "corrupt"
+        return None, "corrupt", None
+    started_at = lines[2] if len(lines) >= 3 else None
+    return pid, "", started_at
+
+
+def _format_elapsed(started_at_iso: str) -> str:
+    """Return a human-readable elapsed duration string from a UTC ISO timestamp."""
+    try:
+        started = datetime.fromisoformat(started_at_iso)
+        now = datetime.now(timezone.utc)
+        total_secs = int((now - started).total_seconds())
+        if total_secs < 0:
+            total_secs = 0
+        hours, rem = divmod(total_secs, 3600)
+        minutes, secs = divmod(rem, 60)
+        if hours:
+            return f"{hours}h{minutes:02d}m{secs:02d}s"
+        return f"{minutes}m{secs:02d}s"
+    except (ValueError, TypeError):
+        return "unknown"
 
 
 @app.command()
@@ -299,9 +321,15 @@ def status():
     Exits 0 in all non-error cases (including 'not running').
     """
     pid_file = Path.cwd() / ".spec-lesson" / "daemon.pid"
-    pid, err = _read_pid_file(pid_file)
+    pid, err, started_at = _read_pid_file(pid_file)
     if err == "not_found":
-        typer.echo("spec-lesson: not running")
+        cwd = Path.cwd()
+        typer.echo(f"spec-lesson: not running in {cwd}")
+        typer.echo(
+            "Hint: spec-lesson reads the daemon from .spec-lesson/daemon.pid in the current directory.\n"
+            "If you started it elsewhere, cd into that directory first.",
+            err=True,
+        )
         return
     if err in ("bad_header", "corrupt"):
         typer.secho(
@@ -314,7 +342,11 @@ def status():
     except ProcessLookupError:
         typer.echo(f"spec-lesson: stale pid file (pid {pid} gone) — run again to recover")
         return
-    typer.echo(f"spec-lesson: running (pid {pid})")
+    if started_at:
+        elapsed = _format_elapsed(started_at)
+        typer.echo(f"spec-lesson: running (pid {pid}, started {started_at}, elapsed {elapsed})")
+    else:
+        typer.echo(f"spec-lesson: running (pid {pid})")
 
 
 @app.command()
@@ -379,9 +411,15 @@ def stop():
     not written by spec-lesson.
     """
     pid_file = Path.cwd() / ".spec-lesson" / "daemon.pid"
-    pid, err = _read_pid_file(pid_file)
+    pid, err, _started_at = _read_pid_file(pid_file)
     if err == "not_found":
-        typer.echo("spec-lesson: not running")
+        cwd = Path.cwd()
+        typer.echo(f"spec-lesson: not running in {cwd}")
+        typer.echo(
+            "Hint: spec-lesson reads the daemon from .spec-lesson/daemon.pid in the current directory.\n"
+            "If you started it elsewhere, cd into that directory first.",
+            err=True,
+        )
         raise typer.Exit(1)
     if err in ("bad_header", "corrupt"):
         # SEC-3: refuse to send SIGTERM to an unvalidated PID — could kill an
