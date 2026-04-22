@@ -40,6 +40,7 @@ class StdoutHudRenderer:
         pass
 
 
+# Task 24: Tkinter HUD — frameless, always-on-top, translucent
 class TkinterHudRenderer:
     def __init__(self, observer, poll_ms: int = 500):
         import tkinter as tk
