@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from spec_lesson.rollup.collector import SessionNote, find_session_files, parse_session
 
@@ -54,3 +55,18 @@ We designed a live meeting assistant.
     assert "Should we ship HUD in v1?" in note.open_questions
     assert "Ship plan 1" in note.action_items
     assert note.path == p
+
+
+def test_parse_session_empty_section_does_not_bleed(tmp_path):
+    p = tmp_path / "s.md"
+    p.write_text("# T\n\n## Decisions\n\n## Requirements\n- req only\n")
+    note = parse_session(p)
+    assert note.decisions == []
+    assert note.requirements == ["req only"]
+
+
+def test_parse_session_returns_none_on_broken_symlink(tmp_path):
+    target = tmp_path / "gone.md"
+    link = tmp_path / "broken.md"
+    os.symlink(target, link)  # target doesn't exist
+    assert parse_session(link) is None

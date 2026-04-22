@@ -37,9 +37,11 @@ _SECTION_HEADERS = {
 
 
 def _parse_bulleted_section(body: str, header: str) -> list[str]:
-    # Capture lines under `## Header` until next heading
-    pattern = rf"##\s+{re.escape(header)}\s*\n(.*?)(?=\n##\s|\Z)"
-    m = re.search(pattern, body, re.DOTALL)
+    # Capture lines under `## Header` until next heading.
+    # Use MULTILINE + ^## anchor so an empty section followed immediately by
+    # another ## header does not bleed bullets from the next section.
+    pattern = rf"^##\s+{re.escape(header)}\s*\n(.*?)(?=^##\s|\Z)"
+    m = re.search(pattern, body, re.DOTALL | re.MULTILINE)
     if not m:
         return []
     section = m.group(1)
