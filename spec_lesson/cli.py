@@ -175,11 +175,11 @@ def start(
         from .hud.observer import HudObserver
         observer = HudObserver(max_seconds=cfg.max_seconds)
     if hud == "stdout":
-        from .hud.renderer import StdoutHudRenderer
-        renderer = StdoutHudRenderer()
+        from .hud.renderer import HudRenderer, StdoutHudRenderer
+        renderer: HudRenderer | None = StdoutHudRenderer()
     elif hud == "tk":
-        from .hud.renderer import TkinterHudRenderer
-        renderer = TkinterHudRenderer(observer=observer)
+        from .hud.renderer import HudRenderer, TkinterHudRenderer
+        renderer: HudRenderer | None = TkinterHudRenderer(observer=observer)
 
     audio_source = _build_audio_source(observer=observer) if audio else None
 

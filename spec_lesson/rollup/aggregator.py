@@ -44,7 +44,7 @@ def render_rollup(notes: list[SessionNote], window_label: str = "last 24 hours",
     open_questions = _dedupe_case_insensitive([(n.title, n.open_questions) for n in notes])
     action_items = _dedupe_case_insensitive([(n.title, n.action_items) for n in notes])
 
-    topic_counts = Counter()
+    topic_counts: Counter[str] = Counter()
     for n in notes:
         topic_counts.update(n.topics)
     top_topics = topic_counts.most_common(10)
