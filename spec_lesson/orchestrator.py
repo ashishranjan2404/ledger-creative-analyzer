@@ -106,7 +106,10 @@ class Orchestrator:
         with self.session.triggers_log.open("a", encoding="utf-8") as fh:
             fh.write(line)
         if self._observer is not None:
-            self._observer.on_trigger(at=u.timestamp, phrase=u.text)
+            try:
+                self._observer.on_trigger(at=u.timestamp, phrase=u.text)
+            except Exception as e:
+                log.warning("observer.on_trigger failed: %s", e)
 
     async def _run_context(self) -> None:
         latest = self.buffer.latest_timestamp()
@@ -116,11 +119,14 @@ class Orchestrator:
         self.claude_md_writer.write_managed_section(dist.render_markdown())
         if self._observer is not None:
             elapsed = time.monotonic() - self._session_start
-            self._observer.on_context(
-                at=elapsed,
-                topic=dist.topic,
-                decisions_count=len(dist.decisions),
-            )
+            try:
+                self._observer.on_context(
+                    at=elapsed,
+                    topic=dist.topic,
+                    decisions_count=len(dist.decisions),
+                )
+            except Exception as e:
+                log.warning("observer.on_context failed: %s", e)
 
     async def _run_thread(self) -> None:
         latest = self.buffer.latest_timestamp()
@@ -131,12 +137,15 @@ class Orchestrator:
         log.info("thread tier ran")
         if self._observer is not None:
             elapsed = time.monotonic() - self._session_start
-            self._observer.on_thread(
-                at=elapsed,
-                drift=drift_state.drift,
-                current_topic=drift_state.current_topic,
-                drift_from=drift_state.drift_from,
-            )
+            try:
+                self._observer.on_thread(
+                    at=elapsed,
+                    drift=drift_state.drift,
+                    current_topic=drift_state.current_topic,
+                    drift_from=drift_state.drift_from,
+                )
+            except Exception as e:
+                log.warning("observer.on_thread failed: %s", e)
 
     async def _run_immediate(self) -> None:
         latest = self.buffer.latest_timestamp()
@@ -146,7 +155,10 @@ class Orchestrator:
         log.info("immediate: %s", out.candidates)
         if self._observer is not None:
             elapsed = time.monotonic() - self._session_start
-            self._observer.on_immediate(at=elapsed, candidates=out.candidates)
+            try:
+                self._observer.on_immediate(at=elapsed, candidates=out.candidates)
+            except Exception as e:
+                log.warning("observer.on_immediate failed: %s", e)
 
     async def _pause_watcher(self) -> None:
         """Fire ImmediateTier when no new utterance has arrived for >_pause_threshold seconds."""
@@ -212,7 +224,10 @@ class Orchestrator:
             await asyncio.sleep(1.0)
             if self._observer is not None:
                 elapsed = time.monotonic() - self._session_start
-                self._observer.tick(elapsed=elapsed)
+                try:
+                    self._observer.tick(elapsed=elapsed)
+                except Exception as e:
+                    log.warning("observer.tick failed: %s", e)
 
     async def run(self) -> None:
         # Capture the running event loop so that ingest(), which may be called
