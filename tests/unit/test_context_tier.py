@@ -46,6 +46,48 @@ async def test_second_run_passes_previous_distillation_as_cached_context():
     assert "t1" in second_call["cached_context"]
 
 @pytest.mark.asyncio
+async def test_utterances_arriving_during_llm_call_are_not_skipped():
+    """BUG-D-1: utterances appended to the buffer while the LLM await is in-flight
+    must be included in the NEXT run, not permanently skipped."""
+    buf = RollingTranscript()
+    buf.append(_u(1.0, "first"))
+
+    fake_json_1 = '{"topic":"t1","decisions":[],"requirements":[],"open_questions":[],"recent_verbatim":""}'
+    fake_json_2 = '{"topic":"t2","decisions":["late"],"requirements":[],"open_questions":[],"recent_verbatim":""}'
+
+    client_calls = []
+
+    async def side_effect(**kwargs):
+        # On the FIRST LLM call, simulate an utterance arriving mid-await.
+        if len(client_calls) == 0:
+            buf.append(_u(5.0, "arrived during LLM call"))
+        client_calls.append(kwargs)
+        return fake_json_1 if len(client_calls) == 1 else fake_json_2
+
+    client = AsyncMock()
+    client.complete = AsyncMock(side_effect=side_effect)
+
+    tier = ContextTier(client=client, buffer=buf)
+    await tier.run(now=2.0)
+
+    # After run 1, boundary_ts was snapshotted at 1.0 (before the late utterance).
+    # _last_timestamp_processed must be 1.0, not 5.0.
+    assert tier._last_timestamp_processed == 1.0, (
+        f"Expected cursor at 1.0 (pre-await snapshot), got {tier._last_timestamp_processed}"
+    )
+
+    # Run 2: the late utterance at t=5.0 must appear in the new_utterances.
+    buf.append(_u(6.0, "third"))
+    merged = await tier.run(now=7.0)
+
+    # The second LLM call's fresh_input must contain the "arrived during LLM call" text.
+    second_call_kwargs = client_calls[1]
+    assert "arrived during LLM call" in second_call_kwargs["fresh_input"], (
+        "Utterance that arrived during the first LLM call was permanently skipped — BUG-D-1 not fixed"
+    )
+
+
+@pytest.mark.asyncio
 async def test_run_tolerates_malformed_json_and_returns_previous():
     buf = RollingTranscript()
     buf.append(_u(1.0, "x"))

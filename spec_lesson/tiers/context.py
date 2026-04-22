@@ -23,6 +23,14 @@ class ContextTier:
         return self._last
 
     async def run(self, now: float) -> Distillation:
+        # BUG-D-1: snapshot the cursor BEFORE the await so that any utterances
+        # that arrive while the LLM call is in-flight are NOT silently skipped.
+        # We advance _last_timestamp_processed only to this snapshot; the next
+        # run will pick up everything newer.
+        boundary_ts = self._buffer.latest_timestamp()
+        if boundary_ts is None:
+            return self._last  # nothing in buffer yet
+
         new_utterances = self._buffer.since(self._last_timestamp_processed)
         new_transcript = "\n".join(
             f"[{u.timestamp:.1f}] {u.speaker}: {u.text}" for u in new_utterances
@@ -48,9 +56,9 @@ class ContextTier:
         merged = self._last.merge_append_only(parsed)
         merged.updated_at_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
         self._last = merged
-        latest_ts = self._buffer.latest_timestamp()
-        if latest_ts is not None:
-            self._last_timestamp_processed = latest_ts
+        # Advance to the pre-await snapshot, not the current latest_timestamp().
+        # Utterances that arrived during the LLM call will be picked up next run.
+        self._last_timestamp_processed = boundary_ts
         return merged
 
     def _render_cached(self, prev: Distillation) -> str:
