@@ -14,7 +14,7 @@ from .tiers.client import AnthropicClient
 app = typer.Typer(help="spec-lesson: ADHD live meeting assistant", no_args_is_help=True)
 
 
-def _canned_response(*, model, system, cached_context, fresh_input, max_tokens) -> str:
+def _canned_response(*, model, system, cached_context, fresh_input, max_tokens, use_cache=True) -> str:
     if "thread" in system.lower():
         return '{"current_topic":"fake","drift":"on","drift_from":""}'
     if "respond in real time" in system.lower():

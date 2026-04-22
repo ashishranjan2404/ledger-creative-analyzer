@@ -36,11 +36,15 @@ async def test_stop_triggers_shutdown_before_cap(tmp_path: Path):
     assert shutdown_called == [True]
 
 def test_pid_file_written_and_parseable(tmp_path: Path):
+    from spec_lesson.lifecycle import PID_FILE_HEADER
     state = tmp_path / ".spec-lesson"
     life = SessionLifecycle(state_dir=state, max_seconds=1.0)
     life.write_pid_file()
     assert life.pid_file.exists()
-    assert int(life.pid_file.read_text().strip()) > 0
+    # SEC-3: PID file now has a two-line format: header + PID
+    lines = life.pid_file.read_text().splitlines()
+    assert lines[0] == PID_FILE_HEADER, f"Expected header line, got: {lines[0]!r}"
+    assert int(lines[1]) > 0
     life.clear_pid_file()
     assert not life.pid_file.exists()
 

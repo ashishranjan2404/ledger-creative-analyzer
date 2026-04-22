@@ -12,7 +12,7 @@ FIXTURE = Path(__file__).parent / "fixtures" / "meeting_transcript.jsonl"
 @pytest.mark.asyncio
 async def test_end_to_end_fixture_run(tmp_path: Path):
     # arrange: mock client returns a valid distillation JSON each call
-    def _mk_response(*, model, system, cached_context, fresh_input, max_tokens):
+    def _mk_response(*, model, system, cached_context, fresh_input, max_tokens, use_cache=True):
         if "thread" in system.lower():
             return '{"current_topic":"voice tool","drift":"on","drift_from":""}'
         # context

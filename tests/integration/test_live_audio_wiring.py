@@ -66,7 +66,16 @@ async def test_pause_fires_immediate_tier(tmp_path: Path):
         def push(self, u): self._cb(u)
 
     source = FakeAudioSource()
-    cfg = OrchestratorConfig(thread_interval=999, context_interval=999, max_seconds=2.0)
+    # COST-2: set immediate_min_utterances=1 for this test so a single
+    # utterance is enough to trigger the tier (the default is 3 to save cost,
+    # but here we want to verify the pause-detection wiring, not the rate-limit).
+    cfg = OrchestratorConfig(
+        thread_interval=999,
+        context_interval=999,
+        max_seconds=2.0,
+        immediate_min_utterances=1,
+        immediate_min_interval=0.0,
+    )
     orch = Orchestrator(session=session, client=client, config=cfg, audio_source=source)
     orch._pause_check_interval = 0.1
     orch._pause_threshold = 0.3
