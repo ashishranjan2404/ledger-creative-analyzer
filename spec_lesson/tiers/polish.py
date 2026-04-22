@@ -39,4 +39,5 @@ class PolishTier:
             cached_context=cached,
             fresh_input=fresh,
             max_tokens=self.max_tokens,
+            use_cache=False,  # COST-1: Polish is one-shot; no second call to read the cache entry
         )

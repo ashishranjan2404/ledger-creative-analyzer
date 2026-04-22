@@ -99,6 +99,48 @@ async def test_complete_returns_empty_string_when_content_is_empty():
     assert out == ""
 
 
+@pytest.mark.asyncio
+async def test_use_cache_false_omits_cache_control():
+    """COST-1: use_cache=False must suppress the cache_control annotation."""
+    mock_sdk = AsyncMock()
+    fake_response = MagicMock()
+    fake_response.content = [MagicMock(text="ok")]
+    mock_sdk.messages.create = AsyncMock(return_value=fake_response)
+    client = AnthropicClient(sdk=mock_sdk)
+    await client.complete(
+        model="x",
+        system="s",
+        cached_context="c",
+        fresh_input="f",
+        max_tokens=50,
+        use_cache=False,
+    )
+    system = mock_sdk.messages.create.await_args.kwargs["system"]
+    assert system[0].get("cache_control") is None, (
+        "cache_control should be absent when use_cache=False"
+    )
+
+
+@pytest.mark.asyncio
+async def test_use_cache_true_includes_cache_control():
+    """COST-1: use_cache=True (default) must keep the cache_control annotation."""
+    mock_sdk = AsyncMock()
+    fake_response = MagicMock()
+    fake_response.content = [MagicMock(text="ok")]
+    mock_sdk.messages.create = AsyncMock(return_value=fake_response)
+    client = AnthropicClient(sdk=mock_sdk)
+    await client.complete(
+        model="x",
+        system="s",
+        cached_context="c",
+        fresh_input="f",
+        max_tokens=50,
+        use_cache=True,
+    )
+    system = mock_sdk.messages.create.await_args.kwargs["system"]
+    assert system[0].get("cache_control") == {"type": "ephemeral"}
+
+
 def test_async_anthropic_receives_30s_timeout():
     """BUG-A-4: AsyncAnthropic must be created with timeout=30.0."""
     with patch("spec_lesson.tiers.client.AnthropicClient.__init__.__module__"):

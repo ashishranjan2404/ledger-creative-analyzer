@@ -67,6 +67,21 @@ class Distillation:
             "recent_verbatim": self.recent_verbatim,
         })
 
+    def to_json_stable(self) -> str:
+        """JSON representation WITHOUT the volatile ``recent_verbatim`` field.
+
+        COST-1: Use this in the Context tier's cached block so the byte
+        sequence only changes when decisions/requirements/questions/topic
+        actually change — giving Anthropic's prompt cache a stable key to hit.
+        ``recent_verbatim`` is passed separately in ``fresh_input`` instead.
+        """
+        return json.dumps({
+            "topic": self.topic,
+            "decisions": self.decisions,
+            "requirements": self.requirements,
+            "open_questions": self.open_questions,
+        })
+
     def merge_append_only(self, new: "Distillation") -> "Distillation":
         """Merge with append-only semantics: never drop items from old lists."""
         def _append_unique(old: list[str], fresh: list[str]) -> list[str]:

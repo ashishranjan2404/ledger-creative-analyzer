@@ -36,6 +36,7 @@ class ThreadTier:
             cached_context=cached,
             fresh_input=fresh,
             max_tokens=self.max_tokens,
+            use_cache=False,  # COST-1: ~111 tokens — 18× below Haiku 2048-token threshold
         )
         try:
             data = json.loads(raw)

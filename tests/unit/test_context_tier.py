@@ -88,6 +88,33 @@ async def test_utterances_arriving_during_llm_call_are_not_skipped():
 
 
 @pytest.mark.asyncio
+async def test_context_cached_context_excludes_recent_verbatim():
+    """COST-1: recent_verbatim must NOT appear in the cached_context argument."""
+    buf = RollingTranscript()
+    buf.append(_u(1.0, "x"))
+    client = AsyncMock()
+    volatile_verbatim = "volatile text here that should not be cached"
+    fake_json_1 = (
+        f'{{"topic":"t","decisions":["d"],"requirements":[],"open_questions":[],'
+        f'"recent_verbatim":"{volatile_verbatim}"}}'
+    )
+    fake_json_2 = '{"topic":"t2","decisions":["d"],"requirements":[],"open_questions":[],"recent_verbatim":""}'
+    client.complete = AsyncMock(side_effect=[fake_json_1, fake_json_2])
+
+    tier = ContextTier(client=client, buffer=buf)
+    await tier.run(now=1.0)  # first run: sets last.recent_verbatim to volatile_verbatim
+    buf.append(_u(2.0, "y"))
+    await tier.run(now=2.0)  # second run
+
+    second_call = client.complete.await_args_list[1].kwargs
+    assert volatile_verbatim not in second_call["cached_context"], (
+        "recent_verbatim must not appear in cached_context — it breaks cache hit rate"
+    )
+    # but the stable topic should still be there
+    assert "t" in second_call["cached_context"]
+
+
+@pytest.mark.asyncio
 async def test_run_tolerates_malformed_json_and_returns_previous():
     buf = RollingTranscript()
     buf.append(_u(1.0, "x"))

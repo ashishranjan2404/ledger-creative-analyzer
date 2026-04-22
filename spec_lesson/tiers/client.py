@@ -24,18 +24,24 @@ class AnthropicClient:
         cached_context: str,
         fresh_input: str,
         max_tokens: int,
+        use_cache: bool = True,
     ) -> str:
         # Merge system prompt and cached context into a single block so that
         # the combined token count is large enough to meet Anthropic's minimum
         # cache threshold (1024 tokens for Sonnet, 2048 for Haiku).  A single
         # cached block also means one fewer read of the cache header per call.
-        system_blocks = [
-            {
-                "type": "text",
-                "text": f"{system}\n\n---\n\n{cached_context}",
-                "cache_control": {"type": "ephemeral"},
-            },
-        ]
+        #
+        # COST-1: use_cache=False skips the cache_control annotation entirely
+        # so tiers whose cached block is below Anthropic's minimum threshold
+        # (Thread ~111 tok < 2048; Immediate ~111 tok < 2048; Polish one-shot)
+        # do not pay the 25% write-premium with zero compensating reads.
+        block: dict = {
+            "type": "text",
+            "text": f"{system}\n\n---\n\n{cached_context}",
+        }
+        if use_cache:
+            block["cache_control"] = {"type": "ephemeral"}
+        system_blocks = [block]
         response = await self._sdk.messages.create(
             model=model,
             max_tokens=max_tokens,

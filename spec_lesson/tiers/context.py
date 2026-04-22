@@ -43,8 +43,17 @@ class ContextTier:
         new_transcript = "\n".join(
             f"[{u.timestamp:.1f}] {u.speaker}: {u.text}" for u in new_utterances
         )
+        # COST-1: use to_json_stable() (excludes recent_verbatim) in the cached
+        # block so the byte sequence is stable across calls where only the
+        # verbatim excerpt changed.  The volatile verbatim is included in
+        # fresh_input so the LLM still sees it — it just isn't in the cached key.
         cached = self._render_cached(self._last)
-        fresh = (
+        verbatim_prefix = (
+            f"PREVIOUS VERBATIM:\n{self._last.recent_verbatim}\n\n"
+            if self._last.recent_verbatim
+            else ""
+        )
+        fresh = verbatim_prefix + (
             f"NEW TRANSCRIPT SINCE LAST DISTILLATION:\n{new_transcript}"
             if new_transcript
             else "(no new transcript)"
@@ -55,6 +64,7 @@ class ContextTier:
             cached_context=cached,
             fresh_input=fresh,
             max_tokens=self.max_tokens,
+            use_cache=True,  # Context tier grows large enough to hit the 1024-token threshold
         )
         try:
             parsed = Distillation.from_json(raw)
@@ -77,4 +87,6 @@ class ContextTier:
             and prev.topic == "(session just started)"
         ):
             return "PREVIOUS DISTILLATION: (no previous distillation — this is the first run)"
-        return f"PREVIOUS DISTILLATION:\n{prev.to_json()}"
+        # COST-1: use to_json_stable() to exclude recent_verbatim from the
+        # cached block — volatile verbatim changes every call and breaks cache hits.
+        return f"PREVIOUS DISTILLATION:\n{prev.to_json_stable()}"
