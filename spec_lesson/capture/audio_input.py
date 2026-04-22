@@ -28,8 +28,15 @@ class AudioCapture:
         mic = np.frombuffer(mic_frame, dtype=np.int16).astype(np.int32)
         if loop_frame is not None:
             loop = np.frombuffer(loop_frame, dtype=np.int16).astype(np.int32)
-            n = min(len(mic), len(loop))
-            mixed = ((mic[:n] + loop[:n]) // 2).astype(np.int16)
+            # TEST-1 / data-integrity fix: pad the shorter stream with zeros so
+            # that all mic samples are emitted.  The original min() truncation
+            # silently discarded the tail of the mic stream when the loopback
+            # frame was shorter (e.g. a hardware under-run), causing data loss
+            # to Deepgram at 16 kHz.
+            n = max(len(mic), len(loop))
+            mic_p = np.pad(mic, (0, n - len(mic)))
+            loop_p = np.pad(loop, (0, n - len(loop)))
+            mixed = ((mic_p + loop_p) // 2).astype(np.int16)
         else:
             mixed = mic.astype(np.int16)
         self._sink(mixed.tobytes())
