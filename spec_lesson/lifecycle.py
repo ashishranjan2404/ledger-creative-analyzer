@@ -4,6 +4,20 @@ import signal
 from pathlib import Path
 from typing import Awaitable, Callable
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _pid_is_alive(pid: int) -> bool:
+    """Return True if *pid* refers to a running process on this machine."""
+    try:
+        os.kill(pid, 0)  # signal 0 = existence check, no actual signal sent
+        return True
+    except (ProcessLookupError, PermissionError):
+        # ProcessLookupError → no such process
+        # PermissionError on some OSes means process exists but we can't signal it
+        return False
+
 ShutdownHook = Callable[[], Awaitable[None]]
 
 
@@ -17,7 +31,45 @@ class SessionLifecycle:
         self._shutdown_hooks: list[ShutdownHook] = []
 
     def write_pid_file(self) -> None:
-        self.pid_file.write_text(str(os.getpid()))
+        """Write the current PID to *pid_file* using O_CREAT | O_EXCL so that
+        two concurrent starts in the same state dir cannot silently overwrite
+        each other (RES-8 / EDGE-2).
+
+        Behaviour:
+          • No existing PID file  → write and return.
+          • Existing file, PID alive  → raise RuntimeError.
+          • Existing file, PID dead (stale lock)  → unlink and retry once.
+        """
+        pid_bytes = str(os.getpid()).encode()
+
+        def _write_exclusive(path: Path) -> None:
+            fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+            try:
+                os.write(fd, pid_bytes)
+            finally:
+                os.close(fd)
+
+        try:
+            _write_exclusive(self.pid_file)
+        except FileExistsError:
+            # Read the existing PID and decide whether it is still alive.
+            try:
+                existing_pid = int(self.pid_file.read_text().strip())
+            except (ValueError, OSError):
+                existing_pid = None
+
+            if existing_pid is not None and _pid_is_alive(existing_pid):
+                raise RuntimeError(
+                    f"spec-lesson is already running (pid {existing_pid}). "
+                    f"Kill it or remove {self.pid_file} if it is stale."
+                )
+
+            # Stale lock — remove and write our PID.
+            try:
+                self.pid_file.unlink()
+            except FileNotFoundError:
+                pass  # lost race; another process removed it first
+            _write_exclusive(self.pid_file)
 
     def clear_pid_file(self) -> None:
         try:
