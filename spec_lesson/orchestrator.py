@@ -214,24 +214,62 @@ class Orchestrator:
                 pass
         try:
             latest = self.buffer.latest_timestamp()
-            if latest is not None:
-                dist = await self.context_tier.run(now=latest)
-                self.claude_md_writer.write_managed_section(dist.render_markdown())
-                all_text = self.buffer.as_text()
+            if latest is None:
+                # FAULT-6: no speech detected — write a stub so the user knows
+                # the daemon ran and give actionable guidance.
+                log.warning(
+                    "spec-lesson: no speech was detected during this session. "
+                    "Check that your microphone is selected and not muted."
+                )
+                stub = (
+                    "# spec-lesson session (no speech detected)\n\n"
+                    "Session ran but no utterances were received. "
+                    "Check that audio capture is configured (mic unmuted, BlackHole installed).\n"
+                )
                 try:
-                    polished = await self.polish_tier.run(final_distillation=dist, full_transcript=all_text)
-                    self.session.distillation_md.write_text(polished, encoding="utf-8")
-                    if self._observer is not None:
-                        try:
-                            self._observer.on_polish(at=time.monotonic() - self._session_start)
-                        except Exception as e:
-                            log.warning("observer.on_polish failed: %s", e)
-                except Exception:
-                    # Polish call failed (e.g. context-window exceeded or network
-                    # error at shutdown).  Fall back to writing the plain context
-                    # distillation so the user is not left with an empty file.
-                    log.exception("PolishTier failed at shutdown — writing context distillation as fallback")
+                    self.session.distillation_md.write_text(stub, encoding="utf-8")
+                except OSError:
+                    pass
+                return
+
+            # FAULT-8: wrap the final context tier run in its own try/except so
+            # that an Anthropic 500 at shutdown doesn't prevent session.md from
+            # being written.  Fall back to the last successful distillation.
+            try:
+                dist = await self.context_tier.run(now=latest)
+            except Exception as e:
+                log.warning("final context tier run failed at shutdown: %s — using last cached distillation", e)
+                dist = self.context_tier.last  # last successful distillation
+
+            try:
+                self.claude_md_writer.write_managed_section(dist.render_markdown())
+            except OSError as e:
+                log.warning("could not write CLAUDE.md at shutdown: %s", e)
+
+            all_text = self.buffer.as_text()
+            try:
+                polished = await self.polish_tier.run(final_distillation=dist, full_transcript=all_text)
+                if self.transcript_writer.degraded:
+                    polished = (
+                        f"> Warning: Transcript writer was degraded during this session: "
+                        f"{self.transcript_writer.degradation_reason}\n\n"
+                        + polished
+                    )
+                self.session.distillation_md.write_text(polished, encoding="utf-8")
+                if self._observer is not None:
+                    try:
+                        self._observer.on_polish(at=time.monotonic() - self._session_start)
+                    except Exception as e:
+                        log.warning("observer.on_polish failed: %s", e)
+            except Exception:
+                # Polish call failed (e.g. context-window exceeded or network
+                # error at shutdown).  Fall back to writing the plain context
+                # distillation so the user is not left with an empty file.
+                log.exception("PolishTier failed at shutdown — writing context distillation as fallback")
+                try:
                     self.session.distillation_md.write_text(dist.render_markdown(), encoding="utf-8")
+                except OSError as e:
+                    log.warning("could not write distillation fallback: %s", e)
         finally:
             # RES-1 / Fix 6: always close the transcript writer, even if
             # context tier or polish raises — prevents file-handle leaks.
