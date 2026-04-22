@@ -38,6 +38,16 @@ def test_latest_timestamp():
     assert buf.latest_timestamp() == 5.0
 
 
+def test_latest_timestamp_is_max_not_last_appended():
+    """BUG-D-3: out-of-order finals must not roll latest_timestamp backward."""
+    buf = RollingTranscript()
+    buf.append(_u(6.0, "in-order"))
+    buf.append(_u(5.0, "late arrival"))  # out-of-order: t=5 appended after t=6
+    assert buf.latest_timestamp() == 6.0, (
+        f"Expected 6.0 (max), got {buf.latest_timestamp()} — out-of-order utterance rolled cursor back"
+    )
+
+
 def test_only_final_utterances_stored():
     buf = RollingTranscript()
     buf.append(Utterance(1.0, "user", "partial", False))

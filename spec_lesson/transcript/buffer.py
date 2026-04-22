@@ -5,11 +5,17 @@ from .utterance import Utterance
 class RollingTranscript:
     def __init__(self) -> None:
         self._utterances: list[Utterance] = []
+        # BUG-D-3: track the running maximum explicitly so that out-of-order
+        # Deepgram finals (a late t=5 arriving after t=6) never roll the cursor
+        # backward.
+        self._max_ts: Optional[float] = None
 
     def append(self, utterance: Utterance) -> None:
         if not utterance.is_final:
             return
         self._utterances.append(utterance)
+        if self._max_ts is None or utterance.timestamp > self._max_ts:
+            self._max_ts = utterance.timestamp
 
     def all(self) -> list[Utterance]:
         return list(self._utterances)
@@ -22,9 +28,7 @@ class RollingTranscript:
         return [u for u in self._utterances if u.timestamp >= cutoff]
 
     def latest_timestamp(self) -> Optional[float]:
-        if not self._utterances:
-            return None
-        return self._utterances[-1].timestamp
+        return self._max_ts
 
     def as_text(self, utterances: Optional[list[Utterance]] = None) -> str:
         src = utterances if utterances is not None else self._utterances
