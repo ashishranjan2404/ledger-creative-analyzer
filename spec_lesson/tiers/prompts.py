@@ -72,3 +72,18 @@ topics: [tag1, tag2]
 
 OUTPUT THE MARKDOWN DOCUMENT ONLY.
 """
+
+IMMEDIATE_SYSTEM = """You help an ADHD user respond in real time during a meeting.
+
+You receive the last ~90 seconds of conversation transcript.
+
+Output strict JSON with exactly three short response candidates — things the user could say next:
+{
+  "candidates": ["<cand 1>", "<cand 2>", "<cand 3>"]
+}
+
+Rules:
+- Each candidate <= 15 words.
+- Candidates should be diverse: one neutral/buying-time, one substantive, one clarifying question.
+- JSON ONLY.
+"""
