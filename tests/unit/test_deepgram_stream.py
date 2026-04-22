@@ -73,3 +73,45 @@ def test_stop_calls_sdk_finish():
     stream.stop()
 
     fake_socket.send_finalize.assert_called_once()
+
+
+def test_pump_thread_processes_socket_messages():
+    """Verify that start()'s pump thread pulls messages from the iterator and fires the callback."""
+    import time
+    fake_dg = MagicMock()
+
+    # socket is an iterator; provide 2 fake results then StopIteration
+    fake_final = MagicMock()
+    fake_final.is_final = True
+    fake_final.channel.alternatives = [MagicMock(transcript="hi there")]
+    fake_final.start = 2.0
+    fake_final.channel.alternatives[0].words = [MagicMock(speaker=0)]
+
+    fake_interim = MagicMock()
+    fake_interim.is_final = False
+
+    class FakeSocket:
+        def __init__(self):
+            self._msgs = iter([fake_interim, fake_final])
+        def __iter__(self):
+            return self._msgs
+        def send_media(self, b): pass
+        def send_finalize(self): pass
+
+    fake_socket = FakeSocket()
+    fake_dg.listen.v1.connect.return_value = iter([fake_socket])
+
+    stream = DeepgramStream(api_key="fake", dg_sdk=fake_dg)
+    received = []
+    stream.on_utterance(lambda u: received.append(u))
+    stream.start()
+    # give pump thread time to drain
+    for _ in range(20):
+        if received:
+            break
+        time.sleep(0.05)
+    stream.stop()
+
+    assert len(received) == 1
+    assert received[0]["text"] == "hi there"
+    assert received[0]["is_final"] is True
