@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import datetime, timezone
 from typing import Optional
@@ -17,12 +18,19 @@ class ContextTier:
         self._buffer = buffer
         self._last: Distillation = Distillation.empty()
         self._last_timestamp_processed: float = 0.0
+        # SHUTDOWN-1: serialize concurrent run() calls so that a periodic
+        # callback already in-flight and a final shutdown call don't race.
+        self._run_lock = asyncio.Lock()
 
     @property
     def last(self) -> Distillation:
         return self._last
 
     async def run(self, now: float) -> Distillation:
+        async with self._run_lock:
+            return await self._run_locked(now)
+
+    async def _run_locked(self, now: float) -> Distillation:
         # BUG-D-1: snapshot the cursor BEFORE the await so that any utterances
         # that arrive while the LLM call is in-flight are NOT silently skipped.
         # We advance _last_timestamp_processed only to this snapshot; the next
