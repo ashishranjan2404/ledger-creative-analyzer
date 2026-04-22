@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 class HudRenderer(Protocol):
     def render(self, state: HudState) -> None: ...
     def close(self) -> None: ...
+    def mainloop(self) -> None: ...
 
 
 def _fmt_time(seconds: float) -> str:
@@ -47,6 +48,10 @@ class StdoutHudRenderer:
         self._s.flush()
 
     def close(self) -> None:
+        pass
+
+    def mainloop(self) -> None:
+        """No-op: stdout renderer has no event loop."""
         pass
 
 

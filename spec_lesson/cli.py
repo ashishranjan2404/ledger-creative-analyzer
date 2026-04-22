@@ -67,7 +67,7 @@ def _build_client() -> AnthropicClient:
     if os.environ.get("SPEC_LESSON_FAKE_API") == "1":
         sdk = AsyncMock()
         client = AnthropicClient(sdk=sdk)
-        client.complete = AsyncMock(side_effect=lambda **kw: _canned_response(**kw))
+        client.complete = AsyncMock(side_effect=lambda **kw: _canned_response(**kw))  # type: ignore[method-assign]  # fake client: dynamically replacing async method with AsyncMock for SPEC_LESSON_FAKE_API mode
         return client
     return AnthropicClient(sdk=None, api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
@@ -180,16 +180,17 @@ def start(
 
     # Build observer + renderer based on --hud flag (before audio source so we can wire disconnect)
     observer = None
-    renderer = None
+    from .hud.renderer import HudRenderer
+    renderer: HudRenderer | None = None
     if hud != "off":
         from .hud.observer import HudObserver
         observer = HudObserver(max_seconds=cfg.max_seconds)
     if hud == "stdout":
-        from .hud.renderer import HudRenderer, StdoutHudRenderer
-        renderer: HudRenderer | None = StdoutHudRenderer()
+        from .hud.renderer import StdoutHudRenderer
+        renderer = StdoutHudRenderer()
     elif hud == "tk":
-        from .hud.renderer import HudRenderer, TkinterHudRenderer
-        renderer: HudRenderer | None = TkinterHudRenderer(observer=observer)
+        from .hud.renderer import TkinterHudRenderer
+        renderer = TkinterHudRenderer(observer=observer)
 
     audio_source = _build_audio_source(observer=observer) if audio else None
 
@@ -246,6 +247,7 @@ def start(
                 await asyncio.gather(orch.run(), feed_stdin())
             t = threading.Thread(target=lambda: asyncio.run(main()), daemon=True)
             t.start()
+            assert renderer is not None  # renderer is TkinterHudRenderer when hud == "tk"
             renderer.mainloop()
         else:
             async def main_stdout():
@@ -268,6 +270,7 @@ def start(
             import threading
             t = threading.Thread(target=lambda: asyncio.run(orch.run()), daemon=True)
             t.start()
+            assert renderer is not None  # renderer is TkinterHudRenderer when hud == "tk"
             renderer.mainloop()
         else:
             async def main_no_stdin():

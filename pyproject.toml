@@ -29,3 +29,8 @@ include = ["spec_lesson*"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.mypy]
+files = ["spec_lesson"]
+ignore_missing_imports = true
+warn_unused_ignores = true
