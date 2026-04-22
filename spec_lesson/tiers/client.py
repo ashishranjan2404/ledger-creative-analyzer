@@ -13,7 +13,7 @@ class AnthropicClient:
     def __init__(self, sdk: Any = None, api_key: Optional[str] = None):
         if sdk is None:
             from anthropic import AsyncAnthropic
-            sdk = AsyncAnthropic(api_key=api_key)
+            sdk = AsyncAnthropic(api_key=api_key, timeout=30.0)
         self._sdk = sdk
 
     async def complete(
@@ -25,11 +25,14 @@ class AnthropicClient:
         fresh_input: str,
         max_tokens: int,
     ) -> str:
+        # Merge system prompt and cached context into a single block so that
+        # the combined token count is large enough to meet Anthropic's minimum
+        # cache threshold (1024 tokens for Sonnet, 2048 for Haiku).  A single
+        # cached block also means one fewer read of the cache header per call.
         system_blocks = [
-            {"type": "text", "text": system},
             {
                 "type": "text",
-                "text": cached_context,
+                "text": f"{system}\n\n---\n\n{cached_context}",
                 "cache_control": {"type": "ephemeral"},
             },
         ]
@@ -39,4 +42,7 @@ class AnthropicClient:
             system=system_blocks,
             messages=[{"role": "user", "content": fresh_input}],
         )
-        return response.content[0].text
+        for block in response.content:
+            if hasattr(block, "text") and block.text:
+                return block.text
+        return ""
