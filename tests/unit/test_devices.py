@@ -1,3 +1,4 @@
+import pytest
 from unittest.mock import patch
 from spec_lesson.capture.devices import find_blackhole_device, DeviceError
 
@@ -16,9 +17,7 @@ def test_find_blackhole_raises_when_missing():
         {"name": "Built-in Mic", "max_input_channels": 2},
     ]
     with patch("sounddevice.query_devices", return_value=fake_devices):
-        try:
+        with pytest.raises(DeviceError) as excinfo:
             find_blackhole_device()
-            assert False, "should have raised"
-        except DeviceError as e:
-            assert "blackhole" in str(e).lower()
-            assert "brew install blackhole-2ch" in str(e)
+        assert "blackhole" in str(excinfo.value).lower()
+        assert "brew install blackhole-2ch" in str(excinfo.value)

@@ -221,7 +221,7 @@ class Orchestrator:
             return
         baseline = self.context_tier.last.topic
         drift_state = await self.thread_tier.run(baseline_topic=baseline, audio_ts=latest)
-        log.info("thread tier ran")
+        log.debug("thread tier ran")
         if self._observer is not None:
             elapsed = time.monotonic() - self._session_start
             try:
@@ -239,7 +239,7 @@ class Orchestrator:
         if latest is None:
             return
         out = await self.immediate_tier.run(audio_ts=latest)
-        log.info("immediate: %s", out.candidates)
+        log.debug("immediate: %s", out.candidates)
         if self._observer is not None:
             elapsed = time.monotonic() - self._session_start
             try:
