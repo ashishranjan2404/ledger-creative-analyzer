@@ -6,8 +6,10 @@ and Orchestrator before handing off to ``asyncio.run``.
 """
 import asyncio
 import json
+import logging
 import os
 import sys
+import time
 from pathlib import Path
 from unittest.mock import AsyncMock
 
@@ -17,7 +19,32 @@ from .orchestrator import Orchestrator, OrchestratorConfig
 from .session import Session, SessionSetupError
 from .tiers.client import AnthropicClient
 
+# Configure logging so log.warning() appears as "spec-lesson: <msg>" instead of
+# the raw Python module path prefix.  This must run before any logger is created.
+logging.basicConfig(level=logging.WARNING, format="spec-lesson: %(message)s")
+
 app = typer.Typer(help="spec-lesson: ADHD live meeting assistant", no_args_is_help=True)
+
+
+def _version_callback(show: bool) -> None:
+    if show:
+        from spec_lesson import __version__
+        typer.echo(f"spec-lesson {__version__}")
+        raise typer.Exit(0)
+
+
+@app.callback()
+def _global(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        "-V",
+        callback=_version_callback,
+        is_eager=True,
+        help="Show version and exit.",
+    ),
+) -> None:
+    pass
 
 
 def _canned_response(*, model, system, cached_context, fresh_input, max_tokens, use_cache=True) -> str:
@@ -51,7 +78,7 @@ def _build_cfg() -> OrchestratorConfig:
     return cfg
 
 
-def _build_audio_source():
+def _build_audio_source(observer=None):
     from .capture.devices import find_blackhole_device, DeviceError
     from .capture.deepgram_stream import DeepgramStream
     from .capture.audio_input import AudioCapture
@@ -65,7 +92,13 @@ def _build_audio_source():
     try:
         loopback_idx = find_blackhole_device()
     except DeviceError as e:
-        typer.secho(f"Warning: {e}\nProceeding with mic-only capture.", fg=typer.colors.YELLOW)
+        typer.secho(
+            f"BlackHole not found — capturing mic only (system audio will be missed).\n"
+            f"To enable full loopback: brew install blackhole-2ch\n"
+            f"Then restart the session.",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
 
     stream = DeepgramStream(api_key=dg_key)
     cap = AudioCapture(sink=lambda pcm: None, loopback_index=loopback_idx)
@@ -73,15 +106,32 @@ def _build_audio_source():
     class _LiveSource:
         def on_utterance(self, cb):
             stream.on_utterance(cb)
+
+        def on_stream_error(self, cb):
+            stream.on_error(cb)
+
         def start(self):
             stream.start()
             cap._sink = stream.send_audio  # rewire after stream is up
             cap.start()
+
         def stop(self):
             cap.stop()
             stream.stop()
 
-    return _LiveSource()
+    src = _LiveSource()
+
+    # Wire the audio-disconnect callback to the HUD observer if available.
+    if observer is not None:
+        import time as _time
+
+        def _on_audio_error(reason: str) -> None:
+            elapsed = _time.monotonic()
+            observer.on_audio_disconnect(at=elapsed, reason=reason)
+
+        stream.on_error(_on_audio_error)
+
+    return src
 
 
 @app.command()
@@ -96,8 +146,13 @@ def start(
         raise typer.Exit(2)
     if not (transcript_stdin or audio):
         typer.secho(
-            "Choose a source: --audio (live) or --transcript-stdin (Plan 1 stdin).",
-            fg=typer.colors.YELLOW,
+            "spec-lesson start: choose an input source.\n"
+            "  --audio              capture mic + BlackHole (requires DEEPGRAM_API_KEY)\n"
+            "  --transcript-stdin   read JSONL utterances from stdin\n\n"
+            "macOS users: for --audio, install BlackHole first:\n"
+            "  brew install blackhole-2ch && restart",
+            fg=typer.colors.RED,
+            err=True,
         )
         raise typer.Exit(2)
     if hud not in ("off", "stdout", "tk"):
@@ -113,9 +168,7 @@ def start(
     client = _build_client()
     cfg = _build_cfg()
 
-    audio_source = _build_audio_source() if audio else None
-
-    # Build observer + renderer based on --hud flag
+    # Build observer + renderer based on --hud flag (before audio source so we can wire disconnect)
     observer = None
     renderer = None
     if hud != "off":
@@ -128,7 +181,11 @@ def start(
         from .hud.renderer import TkinterHudRenderer
         renderer = TkinterHudRenderer(observer=observer)
 
+    audio_source = _build_audio_source(observer=observer) if audio else None
+
     orch = Orchestrator(session=session, client=client, config=cfg, audio_source=audio_source, observer=observer)
+
+    start_mono = time.monotonic()
 
     if transcript_stdin:
         async def feed_stdin():
@@ -167,7 +224,11 @@ def start(
                 if renderer is not None:
                     tasks.append(poll_renderer())
                 await asyncio.gather(*tasks)
-            asyncio.run(main_stdout())
+            try:
+                asyncio.run(main_stdout())
+            except KeyboardInterrupt:
+                typer.secho("spec-lesson: interrupted by user", fg=typer.colors.YELLOW)
+                raise typer.Exit(130)
     else:
         if hud == "tk":
             import threading
@@ -185,7 +246,20 @@ def start(
                 if renderer is not None:
                     tasks.append(poll_renderer())
                 await asyncio.gather(*tasks)
-            asyncio.run(main_no_stdin())
+            try:
+                asyncio.run(main_no_stdin())
+            except KeyboardInterrupt:
+                typer.secho("spec-lesson: interrupted by user", fg=typer.colors.YELLOW)
+                raise typer.Exit(130)
+
+    # Session-end summary (printed after asyncio.run returns normally or after Ctrl+C)
+    elapsed_min = (time.monotonic() - start_mono) / 60.0
+    typer.secho(
+        f"spec-lesson: session ended after {elapsed_min:.1f} min. "
+        f"{len(orch.buffer.all())} utterances. {orch.trigger.fire_count} trigger fire(s). "
+        f"Output: {session.distillation_md}",
+        fg=typer.colors.GREEN,
+    )
 
 
 def _read_pid_file(pid_file: Path) -> tuple[int | None, str]:
@@ -242,12 +316,19 @@ def rollup(
     out: Path = typer.Option(None, "--out", help="Output path; default stdout"),
 ):
     """Aggregate recent spec-lesson sessions into a rollup markdown."""
+    if since_hours <= 0:
+        typer.secho(
+            f"--since-hours must be > 0 (got {since_hours})",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(2)
     from .rollup.collector import find_session_files, parse_session
     from .rollup.aggregator import render_rollup, filter_by_window
     files = find_session_files(root)
     notes = [n for n in (parse_session(f) for f in files) if n is not None]
     notes = filter_by_window(notes, hours=since_hours)
-    md = render_rollup(notes, window_label=f"last {since_hours:g}h")
+    md = render_rollup(notes, window_label=f"last {since_hours:g}h", since_hours=since_hours, root=root)
     if out:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(md, encoding="utf-8")
