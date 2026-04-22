@@ -183,6 +183,50 @@ This repo previously hosted **Adlyze / Ledger Creative Analyzer** (2026-04-18 Mu
 
 ---
 
+## spec-lesson (sub-project)
+
+`spec-lesson` is an ADHD live meeting assistant that lives in the `spec_lesson/` directory of this repo. It captures meeting audio (mic + BlackHole loopback) or a JSONL transcript stream, runs three LLM tiers in parallel, and writes structured notes to your project's `CLAUDE.md` in real time.
+
+**Three tiers, three time horizons:**
+
+| Tier | Cadence | Model | Purpose |
+|------|---------|-------|---------|
+| Context | every 5 min | Claude Sonnet | Append-only distillation of the full session |
+| Thread | every 2 min | Claude Haiku | Topic drift detection vs. the current baseline |
+| Immediate | on speech pause | Claude Haiku | Three short response candidates for the ADHD user |
+
+**Quick start:**
+
+```bash
+pip install -e spec_lesson/
+export ANTHROPIC_API_KEY=...
+export DEEPGRAM_API_KEY=...
+spec-lesson start --audio --hud stdout
+```
+
+Or replay a JSONL transcript file:
+
+```bash
+cat my-meeting.jsonl | spec-lesson start --transcript-stdin
+```
+
+**Other commands:**
+
+```bash
+spec-lesson status        # is a session running in this directory?
+spec-lesson stop          # send SIGTERM to the running session
+spec-lesson rollup        # aggregate last 24h of sessions into one Markdown doc
+```
+
+Session artefacts are written to `.spec-lesson/` in the current directory:
+`session-<id>.jsonl` (raw transcript), `session-<id>.md` (polished notes), and an updated `CLAUDE.md` managed section.
+
+**Source layout:** `spec_lesson/` — tiers in `tiers/`, audio capture in `capture/`, HUD in `hud/`, transcript persistence in `transcript/`, rollup in `rollup/`.
+
+Tests: `pytest tests/` (132 passing, no external API calls — set `SPEC_LESSON_FAKE_API=1`).
+
+---
+
 ## Environment variables
 
 None are committed. `.gitignore` covers `.env`, `.env.local`, `.cartesia.env`, `*.credentials`, `.secrets/`, `*.key`, `node_modules/`. Function env vars are managed via Butterbase `update_function_env`:
