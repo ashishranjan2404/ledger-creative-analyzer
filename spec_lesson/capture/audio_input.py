@@ -44,28 +44,32 @@ class AudioCapture:
             self._thread.join(timeout=2.0)
 
     def _run(self) -> None:
+        # RES-4 / Fix 9: construct and start all streams INSIDE the try block
+        # so the finally clause can close any handle that was successfully
+        # opened, even if a later start() call raises.
         import sounddevice
-        mic_stream = sounddevice.RawInputStream(
-            samplerate=self._sample_rate,
-            channels=1,
-            dtype="int16",
-            blocksize=self._frame_size,
-            device=self._mic_index,
-        )
+        mic_stream = None
         loop_stream = None
-        if self._loopback_index is not None:
-            loop_stream = sounddevice.RawInputStream(
+        try:
+            mic_stream = sounddevice.RawInputStream(
                 samplerate=self._sample_rate,
                 channels=1,
                 dtype="int16",
                 blocksize=self._frame_size,
-                device=self._loopback_index,
+                device=self._mic_index,
             )
+            mic_stream.start()
 
-        mic_stream.start()
-        if loop_stream is not None:
-            loop_stream.start()
-        try:
+            if self._loopback_index is not None:
+                loop_stream = sounddevice.RawInputStream(
+                    samplerate=self._sample_rate,
+                    channels=1,
+                    dtype="int16",
+                    blocksize=self._frame_size,
+                    device=self._loopback_index,
+                )
+                loop_stream.start()
+
             while not self._stop.is_set():
                 mic_buf, _ = mic_stream.read(self._frame_size)
                 loop_buf = None
@@ -73,6 +77,13 @@ class AudioCapture:
                     loop_buf, _ = loop_stream.read(self._frame_size)
                 self._mix_and_emit(bytes(mic_buf), bytes(loop_buf) if loop_buf is not None else None)
         finally:
-            mic_stream.stop(); mic_stream.close()
-            if loop_stream is not None:
-                loop_stream.stop(); loop_stream.close()
+            for s in (mic_stream, loop_stream):
+                if s is not None:
+                    try:
+                        s.stop()
+                    except Exception:
+                        pass
+                    try:
+                        s.close()
+                    except Exception:
+                        pass
