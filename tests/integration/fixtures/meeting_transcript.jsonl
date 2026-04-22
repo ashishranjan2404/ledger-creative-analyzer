@@ -1,0 +1,5 @@
+{"timestamp": 1.0, "speaker": "user", "text": "Let's design a voice assistant for ADHD meetings", "is_final": true}
+{"timestamp": 12.0, "speaker": "user", "text": "It should detect drift and help with responses", "is_final": true}
+{"timestamp": 25.0, "speaker": "user", "text": "We need a hard 1.5 hour cap per session", "is_final": true}
+{"timestamp": 40.0, "speaker": "user", "text": "OK Claude, build that", "is_final": true}
+{"timestamp": 55.0, "speaker": "user", "text": "And log triggers to a file", "is_final": true}
