@@ -250,14 +250,33 @@ class Orchestrator:
     async def _pause_watcher(self) -> None:
         """Fire ImmediateTier when no new utterance has arrived for >pause_threshold seconds."""
         pw = self._pause_watcher_state
+        # FAULT-5: track the monotonic clock at each tick so we can detect a
+        # system suspend/hibernate.  On Linux, CLOCK_MONOTONIC advances during
+        # sleep, so a gap >> check_interval means the machine was asleep.  On
+        # macOS, CLOCK_UPTIME_RAW does NOT advance during sleep, so the gap
+        # stays small — the macOS case is harmless but we apply the same guard
+        # for consistency.  If the gap is absurdly large (>3600 s), reset the
+        # last-utterance reference to now so the stale pause-detection state
+        # does not cause a spurious ImmediateTier fire on resume.
+        _last_tick_mono: float = time.monotonic()
         while not self._lifecycle.is_stopping:
             await asyncio.sleep(pw.check_interval)
             # RES-2 / Fix 7: do NOT fire _run_immediate after _on_shutdown has
             # started tearing down audio — check the flag after each sleep.
             if self._shutting_down:
                 return
-            latest = self.buffer.latest_timestamp()
             now_mono = time.monotonic()
+            # FAULT-5: suppress spurious fire on resume from hibernate.
+            tick_gap = now_mono - _last_tick_mono
+            _last_tick_mono = now_mono
+            if tick_gap > 3600.0:
+                log.warning(
+                    "spec-lesson: large monotonic gap (%.0fs) — likely resumed from suspend; "
+                    "skipping ImmediateTier fire to avoid stale-state spurious call.",
+                    tick_gap,
+                )
+                continue
+            latest = self.buffer.latest_timestamp()
             if pw.should_fire(latest, len(self.buffer.all()), now_mono,
                               last_utterance_mono=self.ingress.last_utterance_monotonic):
                 pw.mark_fired(latest, now_mono)  # type: ignore[arg-type]
