@@ -331,6 +331,31 @@ def rollup(
             err=True,
         )
         raise typer.Exit(2)
+    # SEC-6: reject --out paths outside the user's home directory to prevent
+    # accidental writes to system paths.  Absolute paths under /tmp and the
+    # current working directory are also permitted (tests and CI use /tmp).
+    if out is not None:
+        resolved = Path(out).resolve()
+        home = Path.home().resolve()
+        cwd = Path.cwd().resolve()
+        import tempfile
+        tmp_dir = Path(tempfile.gettempdir()).resolve()
+        try:
+            resolved.relative_to(home)
+        except ValueError:
+            try:
+                resolved.relative_to(cwd)
+            except ValueError:
+                try:
+                    resolved.relative_to(tmp_dir)
+                except ValueError:
+                    typer.secho(
+                        f"--out path '{out}' is outside your home directory. "
+                        f"Use a path under {home} to prevent accidental writes.",
+                        fg=typer.colors.RED,
+                        err=True,
+                    )
+                    raise typer.Exit(2)
     from .rollup.collector import find_session_files, parse_session
     from .rollup.aggregator import render_rollup, filter_by_window
     files = find_session_files(root)
