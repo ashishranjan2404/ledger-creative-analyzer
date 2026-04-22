@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 import typer
 
 from .orchestrator import Orchestrator, OrchestratorConfig
-from .session import Session
+from .session import Session, SessionSetupError
 from .tiers.client import AnthropicClient
 
 app = typer.Typer(help="spec-lesson: ADHD live meeting assistant", no_args_is_help=True)
@@ -99,7 +99,11 @@ def start(
         raise typer.Exit(2)
 
     project_dir = Path.cwd()
-    session = Session.new(project_dir=project_dir)
+    try:
+        session = Session.new(project_dir=project_dir)
+    except SessionSetupError as e:
+        typer.secho(f"spec-lesson: {e}", fg=typer.colors.RED)
+        raise typer.Exit(1)
     client = _build_client()
     cfg = _build_cfg()
 
