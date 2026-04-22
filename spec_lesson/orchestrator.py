@@ -71,6 +71,10 @@ class Orchestrator:
         self._last_immediate_for_ts: Optional[float] = None
         self._utterance_received_monotonic = time.monotonic()
 
+        # RES-2 / Fix 7: shutdown guard — set to True as the FIRST action
+        # inside _on_shutdown so _pause_watcher stops before teardown begins.
+        self._shutting_down: bool = False
+
     def ingest(self, utterance_dict: dict) -> None:
         u = Utterance.safe_from_dict(utterance_dict)
         if u is None:
@@ -124,6 +128,10 @@ class Orchestrator:
         """Fire ImmediateTier when no new utterance has arrived for >_pause_threshold seconds."""
         while not self._lifecycle._stop_event.is_set():
             await asyncio.sleep(self._pause_check_interval)
+            # RES-2 / Fix 7: do NOT fire _run_immediate after _on_shutdown has
+            # started tearing down audio — check the flag after each sleep.
+            if self._shutting_down:
+                return
             latest = self.buffer.latest_timestamp()
             if latest is None:
                 continue
@@ -138,6 +146,10 @@ class Orchestrator:
                     log.warning("immediate tier failed: %s", e)
 
     async def _on_shutdown(self) -> None:
+        # RES-2 / Fix 7: set the flag FIRST so _pause_watcher stops iterating
+        # before we tear down audio and run final tier passes.
+        self._shutting_down = True
+
         self._context_runner.stop()
         self._thread_runner.stop()
         if self.audio_source is not None:
@@ -145,21 +157,25 @@ class Orchestrator:
                 self.audio_source.stop()
             except Exception:
                 pass
-        latest = self.buffer.latest_timestamp()
-        if latest is not None:
-            dist = await self.context_tier.run(now=latest)
-            self.claude_md_writer.write_managed_section(dist.render_markdown())
-            all_text = self.buffer.as_text()
-            try:
-                polished = await self.polish_tier.run(final_distillation=dist, full_transcript=all_text)
-                self.session.distillation_md.write_text(polished, encoding="utf-8")
-            except Exception:
-                # Polish call failed (e.g. context-window exceeded or network
-                # error at shutdown).  Fall back to writing the plain context
-                # distillation so the user is not left with an empty file.
-                log.exception("PolishTier failed at shutdown — writing context distillation as fallback")
-                self.session.distillation_md.write_text(dist.render_markdown(), encoding="utf-8")
-        self.transcript_writer.close()
+        try:
+            latest = self.buffer.latest_timestamp()
+            if latest is not None:
+                dist = await self.context_tier.run(now=latest)
+                self.claude_md_writer.write_managed_section(dist.render_markdown())
+                all_text = self.buffer.as_text()
+                try:
+                    polished = await self.polish_tier.run(final_distillation=dist, full_transcript=all_text)
+                    self.session.distillation_md.write_text(polished, encoding="utf-8")
+                except Exception:
+                    # Polish call failed (e.g. context-window exceeded or network
+                    # error at shutdown).  Fall back to writing the plain context
+                    # distillation so the user is not left with an empty file.
+                    log.exception("PolishTier failed at shutdown — writing context distillation as fallback")
+                    self.session.distillation_md.write_text(dist.render_markdown(), encoding="utf-8")
+        finally:
+            # RES-1 / Fix 6: always close the transcript writer, even if
+            # context tier or polish raises — prevents file-handle leaks.
+            self.transcript_writer.close()
 
     def _on_utterance_from_audio(self, utterance_dict: dict) -> None:
         """Bridge callback from audio source: mark wall-clock + ingest."""
