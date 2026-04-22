@@ -22,6 +22,10 @@ async def test_detects_on_topic():
     assert state.drift == "on"
     assert state.current_topic == "API design"
     assert state.drift_from == ""
+    # Thread tier must use Haiku and skip caching (block too small for cache threshold)
+    call = client.complete.await_args.kwargs
+    assert call["model"] == "claude-haiku-4-5", f"ThreadTier must use claude-haiku-4-5, got {call['model']!r}"
+    assert call.get("use_cache", True) is False, "ThreadTier must pass use_cache=False"
 
 
 @pytest.mark.asyncio

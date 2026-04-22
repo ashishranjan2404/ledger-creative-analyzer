@@ -25,6 +25,9 @@ async def test_first_run_uses_empty_previous_distillation():
     # first call: cached context should indicate no previous distillation
     call = client.complete.await_args.kwargs
     assert "no previous distillation" in call["cached_context"].lower()
+    # Context tier must use Sonnet and enable caching
+    assert call["model"] == "claude-sonnet-4-6", f"ContextTier must use claude-sonnet-4-6, got {call['model']!r}"
+    assert call.get("use_cache", True) is True, "ContextTier must pass use_cache=True"
 
 @pytest.mark.asyncio
 async def test_second_run_passes_previous_distillation_as_cached_context():

@@ -20,6 +20,10 @@ async def test_returns_three_suggestions():
         "Whisper is local",
         "What are the latency needs?",
     ]
+    # ImmediateTier must use Haiku and skip caching
+    call = client.complete.await_args.kwargs
+    assert call["model"] == "claude-haiku-4-5", f"ImmediateTier must use claude-haiku-4-5, got {call['model']!r}"
+    assert call.get("use_cache", True) is False, "ImmediateTier must pass use_cache=False"
 
 @pytest.mark.asyncio
 async def test_malformed_json_returns_empty():

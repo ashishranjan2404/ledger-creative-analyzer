@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 from pathlib import Path
 import pytest
 from unittest.mock import patch
@@ -12,8 +13,15 @@ def test_log_fire_creates_file_and_appends(tmp_path: Path):
     det.log_fire(log, "ok claude build this")
     lines = log.read_text().splitlines()
     assert len(lines) == 2
-    assert "build that" in lines[0]
-    assert "build this" in lines[1]
+
+    for line, phrase in [(lines[0], "build that"), (lines[1], "build this")]:
+        parts = line.split(" | ", maxsplit=1)
+        assert len(parts) == 2, f"Log line missing ' | ' separator: {line!r}"
+        ts_str, logged_phrase = parts
+        # Verify timestamp is a valid UTC ISO datetime
+        dt = datetime.fromisoformat(ts_str)
+        assert dt.tzinfo is not None, "Timestamp must include timezone offset"
+        assert phrase in logged_phrase, f"Expected {phrase!r} in phrase field: {logged_phrase!r}"
 
 
 def test_log_fire_creates_parent_dirs(tmp_path: Path):
@@ -28,9 +36,14 @@ def test_log_fire_includes_utc_timestamp(tmp_path: Path):
     log = tmp_path / "triggers.log"
     det.log_fire(log, "ok claude build it")
     content = log.read_text()
-    # UTC ISO timestamp should include 'T' and '+00:00'
-    assert "T" in content
-    assert "|" in content
+    line = content.strip()
+    parts = line.split(" | ", maxsplit=1)
+    assert len(parts) == 2, f"Expected '<ts> | <phrase>' format, got: {line!r}"
+    ts_str = parts[0]
+    dt = datetime.fromisoformat(ts_str)
+    assert dt.utcoffset() is not None and dt.utcoffset().total_seconds() == 0, (
+        f"Timestamp must be UTC (+00:00), got tzinfo={dt.tzinfo}"
+    )
 
 @pytest.mark.parametrize("text", [
     "OK Claude, build that",

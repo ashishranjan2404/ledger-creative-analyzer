@@ -16,6 +16,10 @@ async def test_polish_returns_markdown_from_client():
     md = await tier.run(final_distillation=final, full_transcript="user: hi")
     assert md.startswith("---")
     assert "# Meeting" in md
+    # PolishTier must use Sonnet and skip caching (one-shot call)
+    call = client.complete.await_args.kwargs
+    assert call["model"] == "claude-sonnet-4-6", f"PolishTier must use claude-sonnet-4-6, got {call['model']!r}"
+    assert call.get("use_cache", True) is False, "PolishTier must pass use_cache=False"
 
 
 @pytest.mark.asyncio
