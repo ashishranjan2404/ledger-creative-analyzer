@@ -1,4 +1,5 @@
 import re
+import time
 from typing import Optional
 
 _TRIGGER_PATTERN = re.compile(
@@ -16,13 +17,26 @@ def normalize(text: str) -> str:
 class TriggerDetector:
     def __init__(self, cooldown_seconds: float = 30.0):
         self.cooldown_seconds = cooldown_seconds
-        self._last_fire_at: Optional[float] = None
+        # BUG-D-6: use wall-clock monotonic time for cooldown, NOT audio
+        # timestamps.  After a Deepgram reconnect, audio timestamps reset to ~0,
+        # which would make (now - last_fire_at) hugely negative and either fire
+        # immediately or lock indefinitely depending on sign conventions.
+        self._last_fire_monotonic: Optional[float] = None
 
     def check(self, text: str, now: float) -> bool:
+        """Return True if *text* matches the trigger pattern and the cooldown has elapsed.
+
+        *now* is kept for API compatibility but is no longer used for cooldown
+        calculations; wall-clock ``time.monotonic()`` is used instead.
+        """
         normalized = normalize(text)
         if not _TRIGGER_PATTERN.search(normalized):
             return False
-        if self._last_fire_at is not None and now - self._last_fire_at < self.cooldown_seconds:
+        mono_now = time.monotonic()
+        if (
+            self._last_fire_monotonic is not None
+            and mono_now - self._last_fire_monotonic < self.cooldown_seconds
+        ):
             return False
-        self._last_fire_at = now
+        self._last_fire_monotonic = mono_now
         return True
