@@ -48,6 +48,7 @@ class Orchestrator:
         self.client = client
         self.cfg = config
         self.audio_source = audio_source
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
 
         self.buffer = RollingTranscript()
         self.transcript_writer = TranscriptWriter(session.transcript_jsonl)
@@ -71,12 +72,25 @@ class Orchestrator:
         self._utterance_received_monotonic = time.monotonic()
 
     def ingest(self, utterance_dict: dict) -> None:
-        u = Utterance.from_dict(utterance_dict)
+        u = Utterance.safe_from_dict(utterance_dict)
+        if u is None:
+            return  # malformed frame — warning already logged inside safe_from_dict
         self.buffer.append(u)
         self.transcript_writer.append(u)
         if u.is_final and self.trigger.check(u.text, now=u.timestamp):
             self._log_trigger(u)
-            asyncio.create_task(self._context_runner.trigger_now())
+            # ingest() may be called from a non-loop thread (e.g. the
+            # DeepgramStream pump thread).  asyncio.create_task() requires a
+            # running event loop on the calling thread and will raise
+            # RuntimeError otherwise.  Use call_soon_threadsafe so the trigger
+            # is always scheduled on the event-loop thread regardless of which
+            # thread calls ingest().
+            if self._loop is not None:
+                self._loop.call_soon_threadsafe(self._context_runner._trigger.set)
+            else:
+                # Fallback for ingest() called before run() (e.g. stdin feed
+                # that runs inside a coroutine on the loop thread).
+                asyncio.create_task(self._context_runner.trigger_now())
 
     def _log_trigger(self, u: Utterance) -> None:
         line = f"{datetime.now(timezone.utc).isoformat()} | {u.text}\n"
@@ -136,8 +150,15 @@ class Orchestrator:
             dist = await self.context_tier.run(now=latest)
             self.claude_md_writer.write_managed_section(dist.render_markdown())
             all_text = self.buffer.as_text()
-            polished = await self.polish_tier.run(final_distillation=dist, full_transcript=all_text)
-            self.session.distillation_md.write_text(polished, encoding="utf-8")
+            try:
+                polished = await self.polish_tier.run(final_distillation=dist, full_transcript=all_text)
+                self.session.distillation_md.write_text(polished, encoding="utf-8")
+            except Exception:
+                # Polish call failed (e.g. context-window exceeded or network
+                # error at shutdown).  Fall back to writing the plain context
+                # distillation so the user is not left with an empty file.
+                log.exception("PolishTier failed at shutdown — writing context distillation as fallback")
+                self.session.distillation_md.write_text(dist.render_markdown(), encoding="utf-8")
         self.transcript_writer.close()
 
     def _on_utterance_from_audio(self, utterance_dict: dict) -> None:
@@ -146,6 +167,10 @@ class Orchestrator:
         self.ingest(utterance_dict)
 
     async def run(self) -> None:
+        # Capture the running event loop so that ingest(), which may be called
+        # from a background audio-pump thread, can safely schedule work via
+        # loop.call_soon_threadsafe() instead of asyncio.create_task().
+        self._loop = asyncio.get_event_loop()
         self._lifecycle.install_signal_handlers()
         self._utterance_received_monotonic = time.monotonic()
         if self.audio_source is not None:
