@@ -9,7 +9,15 @@ import logging
 import threading
 from typing import Callable, Optional
 
-import numpy as np
+# FAULT-9: defer the numpy import to avoid a hard ImportError when the package
+# is used in environments without audio dependencies (e.g. CI, stdin-only mode).
+# We import at the call site with a user-friendly installation hint.
+try:
+    import numpy as np
+    _NUMPY_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    np = None  # type: ignore[assignment]
+    _NUMPY_AVAILABLE = False
 
 log = logging.getLogger(__name__)
 
@@ -61,10 +69,24 @@ class AudioCapture:
             self._thread.join(timeout=2.0)
 
     def _run(self) -> None:
+        # FAULT-9: give actionable installation hints if audio deps are missing.
+        if not _NUMPY_AVAILABLE:
+            log.error(
+                "spec-lesson: numpy is required for audio capture. "
+                "Install it with: pip install numpy"
+            )
+            return
         # RES-4 / Fix 9: construct and start all streams INSIDE the try block
         # so the finally clause can close any handle that was successfully
         # opened, even if a later start() call raises.
-        import sounddevice
+        try:
+            import sounddevice
+        except ImportError:
+            log.error(
+                "spec-lesson: sounddevice is required for audio capture. "
+                "Install it with: pip install sounddevice"
+            )
+            return
         mic_stream = None
         loop_stream = None
         try:

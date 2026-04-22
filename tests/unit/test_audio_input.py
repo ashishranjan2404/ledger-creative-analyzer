@@ -1,3 +1,5 @@
+import sys
+from unittest.mock import patch
 import numpy as np
 from spec_lesson.capture.audio_input import AudioCapture
 
@@ -63,3 +65,18 @@ def test_missing_loopback_falls_back_to_mic_only():
     cap._mix_and_emit(mic_frame, None)
     mixed = np.frombuffer(captured[0], dtype=np.int16)
     assert np.all(mixed == 50)
+
+
+def test_missing_sounddevice_logs_error_and_returns(caplog):
+    """FAULT-9: _run() must log a helpful error and return (not raise) when sounddevice is absent."""
+    import logging
+    cap = AudioCapture(sink=lambda _: None)
+    # Simulate sounddevice missing by patching the import
+    with patch.dict(sys.modules, {"sounddevice": None}):
+        import spec_lesson.capture.audio_input as _m
+        with caplog.at_level(logging.ERROR, logger="spec_lesson.capture.audio_input"):
+            cap._run()
+    assert any("sounddevice" in r.message.lower() for r in caplog.records), (
+        "FAULT-9: expected a log.error about missing sounddevice, got: "
+        + str([r.message for r in caplog.records])
+    )
