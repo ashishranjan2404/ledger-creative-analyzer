@@ -29,27 +29,27 @@ class HudObserver:
     def on_context(self, at: float, topic: str, decisions_count: int) -> None:
         with self._lock:
             self._state.topic = topic
-            self._append(TierEvent(at=at, kind="context", summary=f"context refreshed · {decisions_count} decisions"))
+            self._append(TierEvent(elapsed_seconds=at, kind="context", summary=f"context refreshed · {decisions_count} decisions"))
 
     def on_thread(self, at: float, drift: str, current_topic: str, drift_from: str) -> None:
         with self._lock:
             self._state.set_drift(drift, current_topic, drift_from)  # type: ignore[arg-type]
             summary = f"drift: {drift}" + (f" (was: {drift_from})" if drift == "drifting" else "")
-            self._append(TierEvent(at=at, kind="thread", summary=summary))
+            self._append(TierEvent(elapsed_seconds=at, kind="thread", summary=summary))
 
     def on_immediate(self, at: float, candidates: list[str]) -> None:
         with self._lock:
             self._state.set_suggestions(candidates)
-            self._append(TierEvent(at=at, kind="immediate", summary=f"{len(candidates)} suggestions"))
+            self._append(TierEvent(elapsed_seconds=at, kind="immediate", summary=f"{len(candidates)} suggestions"))
 
     def on_trigger(self, at: float, phrase: str) -> None:
         with self._lock:
             self._state.trigger_fired_at = at
-            self._append(TierEvent(at=at, kind="trigger", summary=f"trigger: {phrase}"))
+            self._append(TierEvent(elapsed_seconds=at, kind="trigger", summary=f"trigger: {phrase}"))
 
     def on_polish(self, at: float) -> None:
         with self._lock:
-            self._append(TierEvent(at=at, kind="polish", summary="session polished"))
+            self._append(TierEvent(elapsed_seconds=at, kind="polish", summary="session polished"))
 
     def on_audio_disconnect(self, at: float, reason: str) -> None:
         """Called when the Deepgram pump exits unexpectedly. Thread-safe."""
@@ -57,7 +57,7 @@ class HudObserver:
             self._state.audio_disconnected = True
             self._state.audio_disconnect_at = at
             self._append(TierEvent(
-                at=at,
+                elapsed_seconds=at,
                 kind="audio_error",
                 summary=f"audio disconnected: {reason}",
             ))

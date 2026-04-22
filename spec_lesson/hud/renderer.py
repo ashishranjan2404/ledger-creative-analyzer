@@ -6,8 +6,11 @@ overlay (alpha 0.88) that self-updates every 500 ms by polling the observer
 from the Tk main loop — ``render()`` is a no-op on this backend.
 """
 import sys
-from typing import Protocol, TextIO
+from typing import TYPE_CHECKING, Protocol, TextIO
 from .state import HudState
+
+if TYPE_CHECKING:
+    import tkinter as tk
 
 class HudRenderer(Protocol):
     def render(self, state: HudState) -> None: ...
@@ -54,10 +57,10 @@ class TkinterHudRenderer:
         self._tk = tk
         self._observer = observer
         self._poll_ms = poll_ms
-        self._root: tk.Tk | None = None
-        self._vars: dict = {}
+        self._root: "tk.Tk | None" = None
+        self._vars: "dict[str, tk.StringVar]" = {}
 
-    def _build(self):
+    def _build(self) -> None:
         tk = self._tk
         root = tk.Tk()
         root.overrideredirect(True)
@@ -96,7 +99,7 @@ class TkinterHudRenderer:
         }
         self._root = root
 
-    def _poll(self):
+    def _poll(self) -> None:
         if self._root is None:
             return
         snap = self._observer.snapshot()
@@ -106,18 +109,19 @@ class TkinterHudRenderer:
             drift_text += f"  (was: {snap.drift_from})"
         self._vars["drift"].set(drift_text)
         self._vars["sugg"].set("\n".join(f"· {c}" for c in snap.suggestions) or "—")
-        lines = [f"{_fmt_time(e.at)} {e.kind}: {e.summary}" for e in snap.timeline[-5:]]
+        lines = [f"{_fmt_time(e.elapsed_seconds)} {e.kind}: {e.summary}" for e in snap.timeline[-5:]]
         self._vars["timeline"].set("\n".join(lines))
         self._vars["time"].set(_fmt_time(snap.remaining_seconds()) + " left")
         self._root.after(self._poll_ms, self._poll)
 
     def mainloop(self) -> None:
         self._build()
+        assert self._root is not None  # _build() always sets _root
         self._root.after(self._poll_ms, self._poll)
         self._root.mainloop()
 
-    def render(self, state) -> None:
-        # not used — Tk drives its own loop via mainloop()
+    def render(self, state: HudState) -> None:  # noqa: ARG002
+        """No-op: TkinterHudRenderer is self-driving via Tk's event loop."""
         pass
 
     def close(self) -> None:

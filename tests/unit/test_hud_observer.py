@@ -17,7 +17,12 @@ def test_on_thread_sets_drift_and_appends_event():
     assert snap.drift == "drifting"
     assert snap.drift_from == "API design"
     assert snap.topic == "dinner"  # current_topic wins
-    assert any(e.kind == "thread" for e in snap.timeline)
+    thread_events = [e for e in snap.timeline if e.kind == "thread"]
+    assert len(thread_events) == 1, f"Expected exactly 1 thread event, got {len(thread_events)}"
+    ev = thread_events[0]
+    assert ev.elapsed_seconds == 10.0
+    assert "drifting" in ev.summary
+    assert "API design" in ev.summary  # drift_from must appear in summary
 
 def test_on_immediate_sets_suggestions():
     o = HudObserver(max_seconds=100.0)
@@ -30,7 +35,11 @@ def test_on_trigger_records_timestamp():
     o.on_trigger(at=42.0, phrase="OK Claude build that")
     snap = o.snapshot()
     assert snap.trigger_fired_at == 42.0
-    assert any(e.kind == "trigger" for e in snap.timeline)
+    trigger_events = [e for e in snap.timeline if e.kind == "trigger"]
+    assert len(trigger_events) == 1
+    ev = trigger_events[0]
+    assert ev.elapsed_seconds == 42.0, f"Expected elapsed_seconds=42.0, got {ev.elapsed_seconds}"
+    assert "OK Claude build that" in ev.summary, f"Phrase missing from summary: {ev.summary!r}"
 
 def test_tick_updates_elapsed():
     o = HudObserver(max_seconds=100.0)

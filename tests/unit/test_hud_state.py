@@ -13,7 +13,7 @@ def test_initial_state():
 def test_append_event_caps_at_50():
     s = HudState.initial()
     for i in range(60):
-        s.append_event(TierEvent(at=float(i), kind="thread", summary=f"e{i}"))
+        s.append_event(TierEvent(elapsed_seconds=float(i), kind="thread", summary=f"e{i}"))
     assert len(s.timeline) == 50
     assert s.timeline[0].summary == "e10"  # oldest events dropped
     assert s.timeline[-1].summary == "e59"

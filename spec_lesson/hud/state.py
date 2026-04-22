@@ -14,9 +14,9 @@ TimelineCap = 50
 @dataclass
 class TierEvent:
     """A single entry in the HUD timeline, emitted by one LLM tier or trigger."""
-    at: float           # seconds since session start
-    kind: str           # "thread" | "context" | "immediate" | "trigger" | "polish"
-    summary: str        # 1-line text
+    elapsed_seconds: float  # seconds since session start (wall-clock monotonic - session_start)
+    kind: str               # "thread" | "context" | "immediate" | "trigger" | "polish"
+    summary: str            # 1-line text
 
 
 @dataclass
