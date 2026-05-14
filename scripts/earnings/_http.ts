@@ -12,8 +12,12 @@ export async function fetchWithTimeout(
 ): Promise<Response> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  // WHY: undici (Node fetch) transparently decodes gzip when the header is set,
+  // saving ~70% on XBRL companyconcept payloads (~50KB JSON → ~15KB wire). No
+  // caller-side decompression needed. Per-call headers in `init` override.
+  const headers = { 'accept-encoding': 'gzip, deflate', ...(init?.headers ?? {}) };
   try {
-    return await fetch(url, { ...init, signal: ctl.signal });
+    return await fetch(url, { ...init, headers, signal: ctl.signal });
   } catch (err) {
     if (ctl.signal.aborted) {
       throw new Error(`timeout after ${timeoutMs}ms: ${url}`);
