@@ -8,6 +8,7 @@ import {
 import { fetchOperationalSignal, type OperationalSignal } from './layers/operational.ts';
 import { fetchSecularSignal, type SecularSignal } from './layers/secular.ts';
 import { fetchRecentTranscripts, type Transcript } from './sources/transcripts.ts';
+import { fetchQuoteAndShares } from './sources/finnhub.ts';
 import { fetchCongressionalTrades } from './sources/congress_disclosure.ts';
 import { fetchLobbying } from './sources/lobbying.ts';
 import { fetchGovContracts } from './sources/gov_contracts.ts';
@@ -76,12 +77,14 @@ async function maybeGovCapital(ticker: Ticker): Promise<GovCapitalSignal | null>
 async function buildCard(
   ticker: Ticker, asOf: Date,
   transcriptsByTicker: ReadonlyMap<Ticker, readonly Transcript[]>, llm: LlmClient | null,
+  finnhubKey: string | null,
 ): Promise<DeepDiveCard> {
-  // V1 (spec §6 L5): price/shares feed deferred — NaN → renderer prints 'n/a'.
-  const NAN = Number.NaN;
+  // L5 quote: optional. No FINNHUB_KEY (or fetch failure) ⇒ NaN/NaN ⇒ renderer prints
+  // 'n/a' for `current` multiples; 5yr median + sector context still populate.
+  const q = finnhubKey ? await fetchQuoteAndShares(ticker, finnhubKey) : null;
   const [fundR, valR, opR, secR] = await Promise.allSettled([
     fetchFundamentalsTrajectory(ticker),
-    fetchValuationContext(ticker, NAN, NAN),
+    fetchValuationContext(ticker, q?.price ?? Number.NaN, q?.sharesOutstanding ?? Number.NaN),
     fetchOperationalSignal(ticker),
     fetchSecularSignal(ticker),
   ] as const);
@@ -113,6 +116,8 @@ export async function runDeepDive(): Promise<{ sent: boolean; cards: number; ms:
   // L4 prereqs: build LLM first → skip EDGAR transcript round-trip when key
   // absent. fetchRecentTranscripts fans per-ticker via allSettled internally.
   const llm = buildLlmClientOrNull();
+  // FINNHUB_KEY: OPTIONAL — mirrors ANTHROPIC_API_KEY gating. Absent ⇒ L5 `current` = n/a.
+  const finnhubKey = process.env['FINNHUB_KEY'] ?? null;
   let transcriptsByTicker: ReadonlyMap<Ticker, readonly Transcript[]> = new Map();
   if (llm) {
     try {
@@ -122,7 +127,7 @@ export async function runDeepDive(): Promise<{ sent: boolean; cards: number; ms:
   }
 
   // Parallel per-ticker: 4 × ~6 EDGAR calls = 24 in flight, within SEC's 10/sec.
-  const cards = await Promise.all(slate.map((t) => buildCard(t, today, transcriptsByTicker, llm)));
+  const cards = await Promise.all(slate.map((t) => buildCard(t, today, transcriptsByTicker, llm, finnhubKey)));
 
   const subject = renderDeepDiveSubject(today, cards.length);
   const text = renderDeepDiveText(cards, today);

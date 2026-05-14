@@ -170,6 +170,40 @@ test('groupTranscriptsByTicker: empty input returns empty map', () => {
   assert.equal(map.size, 0);
 });
 
+// L5 quote: FINNHUB_KEY is OPTIONAL (parallel to ANTHROPIC_API_KEY). Absent ⇒
+// buildCard skips fetchQuoteAndShares ⇒ NaN passed to fetchValuationContext ⇒
+// renderer prints 'n/a' for `current` multiples (5yr median + sector still ship).
+test('readEnv: FINNHUB_KEY is NOT required (L5 current-price is optional)', () => {
+  const env = fullEnv();           // intentionally no FINNHUB_KEY
+  const out = readEnv(env as NodeJS.ProcessEnv);
+  for (const k of ENV_VARS) assert.equal(typeof out[k], 'string');
+  assert.ok(!(ENV_VARS as readonly string[]).includes('FINNHUB_KEY'),
+    'FINNHUB_KEY must stay out of the required-env aggregate');
+});
+
+test('runDeepDive does not fail env-validation when FINNHUB_KEY is absent', async () => {
+  // 3 required vars set, FINNHUB_KEY explicitly unset. env-validation MUST pass;
+  // the run may fail later on network, but never on `missing env var`.
+  const env = fullEnv();
+  const saved: Record<string, string | undefined> = {};
+  for (const k of ENV_VARS) { saved[k] = process.env[k]; process.env[k] = env[k]; }
+  const savedFh = process.env.FINNHUB_KEY;
+  delete process.env.FINNHUB_KEY;
+  try {
+    let envFail = false;
+    try { await runDeepDive(); }
+    catch (e) {
+      envFail = /missing env var/.test(e instanceof Error ? e.message : String(e));
+    }
+    assert.equal(envFail, false, 'missing FINNHUB_KEY must not throw `missing env var`');
+  } finally {
+    for (const k of ENV_VARS) {
+      if (saved[k] !== undefined) process.env[k] = saved[k]; else delete process.env[k];
+    }
+    if (savedFh !== undefined) process.env.FINNHUB_KEY = savedFh;
+  }
+});
+
 test('runDeepDive does not fail env-validation when ANTHROPIC_API_KEY is absent', async () => {
   // Wire up the 3 required env vars but leave ANTHROPIC_API_KEY unset. We expect
   // env-validation to PASS (no `missing env var` throw); the test asserts the

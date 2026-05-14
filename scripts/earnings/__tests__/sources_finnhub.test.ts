@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-import { fetchFinnhubEarnings } from '../sources/finnhub.ts';
+import { fetchFinnhubEarnings, fetchQuoteAndShares } from '../sources/finnhub.ts';
 import { toTicker } from '../_watchlist.ts';
 
 let server: Server;
@@ -54,16 +54,33 @@ const FIXTURES: Record<string, unknown> = {
   NOKEY: NOKEY_RESPONSE,
 };
 
+let quoteBase: string;
+
 before(async () => {
   server = createServer((req, res) => {
     seen.push({ url: req.url ?? '' });
     const url = new URL(req.url ?? '/', 'http://x');
+    const sym = url.searchParams.get('symbol');
+    // Quote + profile2 endpoints for fetchQuoteAndShares tests.
+    if (url.pathname === '/quote') {
+      if (sym === 'BOOM') { res.writeHead(500); res.end('boom'); return; }
+      if (sym === 'NULLC') {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ c: null })); return;
+      }
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ c: 950.5 })); return;
+    }
+    if (url.pathname === '/stock/profile2') {
+      if (sym === 'PBOOM') { res.writeHead(500); res.end('boom'); return; }
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ shareOutstanding: 24500 })); return; // 24,500 million = 24.5B
+    }
     if (url.pathname !== '/calendar/earnings') {
       res.writeHead(404);
       res.end();
       return;
     }
-    const sym = url.searchParams.get('symbol');
     if (sym === 'TSLA') {
       res.writeHead(500);
       res.end('boom');
@@ -80,6 +97,7 @@ before(async () => {
   await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
   const { port } = server.address() as AddressInfo;
   endpoint = `http://127.0.0.1:${port}/calendar/earnings`;
+  quoteBase = `http://127.0.0.1:${port}`;
 });
 
 after(async () => {
@@ -166,4 +184,47 @@ test('per-ticker error is swallowed; siblings still return', async () => {
   } finally {
     console.warn = orig;
   }
+});
+
+// === fetchQuoteAndShares: L5 current-price + shares-outstanding wiring ===
+test('fetchQuoteAndShares: happy path returns price + shares (MILLIONS → absolute)', async () => {
+  const out = await fetchQuoteAndShares(toTicker('NVDA'), 'tk', quoteBase);
+  assert.ok(out, 'expected non-null payload');
+  assert.equal(out.price, 950.5);
+  // shareOutstanding=24500 (millions) → 24500 * 1e6 = 2.45e10
+  assert.equal(out.sharesOutstanding, 24_500_000_000);
+});
+
+test('fetchQuoteAndShares: 500 on quote endpoint → null (graceful)', async () => {
+  const warns: string[] = [];
+  const orig = console.warn;
+  console.warn = (msg: string) => { warns.push(msg); };
+  try {
+    const out = await fetchQuoteAndShares(toTicker('BOOM'), 'tk', quoteBase);
+    assert.equal(out, null);
+    assert.equal(warns.length, 1);
+    assert.match(warns[0]!, /\[finnhub-quote\] BOOM:/);
+  } finally {
+    console.warn = orig;
+  }
+});
+
+test('fetchQuoteAndShares: 500 on profile2 endpoint → null (graceful)', async () => {
+  const warns: string[] = [];
+  const orig = console.warn;
+  console.warn = (msg: string) => { warns.push(msg); };
+  try {
+    const out = await fetchQuoteAndShares(toTicker('PBOOM'), 'tk', quoteBase);
+    assert.equal(out, null);
+    assert.equal(warns.length, 1);
+  } finally {
+    console.warn = orig;
+  }
+});
+
+test('fetchQuoteAndShares: null `c` (closed market / no data) → null', async () => {
+  // NULLC quote returns {c: null}; finnhub returns c:0 for unknown symbols too.
+  // Either way we reject — passing 0/NaN to valuation would render misleading multiples.
+  const out = await fetchQuoteAndShares(toTicker('NULLC'), 'tk', quoteBase);
+  assert.equal(out, null);
 });
