@@ -72,12 +72,22 @@ function mapRows(
   return out;
 }
 
-async function fetchSide(
-  url: string, label: string, chamber: 'Senate' | 'House',
+async function fetchOneOf(
+  urls: readonly string[], chamber: 'Senate' | 'House',
   cutoff: number, tracked: ReadonlySet<string>,
 ): Promise<CongressionalTrade[]> {
-  const rows = asArr(await fetchJson<unknown>(url, { headers: HEADERS }));
-  return mapRows(rows, chamber, cutoff, tracked);
+  let lastErr: unknown;
+  for (const url of urls) {
+    try {
+      const rows = asArr(await fetchJson<unknown>(url, { headers: HEADERS }));
+      return mapRows(rows, chamber, cutoff, tracked);
+    } catch (e) {
+      lastErr = e;
+      // 404/410 (or similar) on the GitHub mirror → try next URL silently.
+      // Only the final attempt's error surfaces to caller via Promise rejection.
+    }
+  }
+  throw lastErr ?? new Error('no congress endpoints reachable');
 }
 
 export async function fetchCongressionalTrades(
@@ -89,15 +99,22 @@ export async function fetchCongressionalTrades(
   if (tickers.length === 0) return [];
   const tracked = new Set<string>(tickers.map((t) => String(t).toUpperCase()));
   const cutoff = Date.now() - sinceDays * DAY_MS;
+  // Fallback: env CONGRESS_SENATE_FALLBACK / CONGRESS_HOUSE_FALLBACK can point
+  // at a mirror if the jeremiak repos ever 404. Tried in order, first success
+  // wins. Useful if the upstream maintainer makes the repo private.
+  const senateUrls = [senateEndpoint, process.env['CONGRESS_SENATE_FALLBACK']]
+    .filter((u): u is string => typeof u === 'string' && u.length > 0);
+  const houseUrls = [houseEndpoint, process.env['CONGRESS_HOUSE_FALLBACK']]
+    .filter((u): u is string => typeof u === 'string' && u.length > 0);
   const [s, h] = await Promise.allSettled([
-    fetchSide(senateEndpoint, 'senate', 'Senate', cutoff, tracked),
-    fetchSide(houseEndpoint, 'house', 'House', cutoff, tracked),
+    fetchOneOf(senateUrls, 'Senate', cutoff, tracked),
+    fetchOneOf(houseUrls, 'House', cutoff, tracked),
   ]);
   const out: CongressionalTrade[] = [];
   if (s.status === 'fulfilled') out.push(...s.value);
-  else console.warn(`[congress] senate: ${String(s.reason)}`);
+  else console.warn(`[congress/senate-unavailable] ${String(s.reason)} — set CONGRESS_SENATE_FALLBACK to a mirror if the primary repo is gone`);
   if (h.status === 'fulfilled') out.push(...h.value);
-  else console.warn(`[congress] house: ${String(h.reason)}`);
+  else console.warn(`[congress/house-unavailable] ${String(h.reason)} — set CONGRESS_HOUSE_FALLBACK to a mirror if the primary repo is gone`);
   out.sort((a, b) => b.transactionDate.getTime() - a.transactionDate.getTime());
   return out;
 }
