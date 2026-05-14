@@ -56,6 +56,9 @@ function atomFeed(cik: string, acc: string, dateIso: string): string {
 
 let server: Server, endpoint = '';
 let xmlByAcc = new Map<string, string | '__404__'>();
+// Keyed by the 10-digit zero-padded CIK that the production code emits
+// in the CIK= query param (see edgar.ts:26 padStart(10,'0') + edgar_form4.ts:88).
+// Verified end-to-end: a mismatch here would flip sinceDays/__404__ tests to fail.
 let feedOverride = new Map<string, string | '__404__'>();
 
 before(async () => {

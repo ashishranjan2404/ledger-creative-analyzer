@@ -334,7 +334,7 @@ None. All known bugs were caught and fixed during the build.
 
 2. **L4 narrative architectural rework** — Currently the narrative-shift extraction calls `api.anthropic.com` directly via `defaultLlmClient`. This costs Anthropic API budget separately from the Max plan. The right architecture is to have the Routine prompt itself instruct Claude (the agent running the Routine) to read transcripts and emit the shift summary inline — no API call needed because the Routine IS Claude. Currently mitigated: `ANTHROPIC_API_KEY` is optional; when unset, narrative is silently skipped. Operator opted to skip for V1. Filed as a follow-up.
 
-3. **`feedOverride` test-harness CIK padding mismatch in `__tests__/sources_edgar_form4.test.ts`** — test sets feedOverride key to padded CIK but server receives unpadded. sinceDays/isolation tests pass for the wrong reason (the override never matches, server falls through to default fixture). Production code is unaffected.
+3. ~~`feedOverride` test-harness CIK padding mismatch~~ — Loop 4 investigated: NOT A BUG. `tickerToCik` returns padded CIK (`edgar.ts:26` padStart(10,'0')), `feedUrl` interpolates it verbatim into `CIK=…`, server's `searchParams.get('CIK')` reads it back fully padded. Override key `'0001045810'` matches. Both override-based tests (sinceDays + __404__ isolation) are self-validating — would FAIL if padding ever broke. Test now carries a clarifying header comment.
 
 4. **T22 institutional CIKs unverified** — Coatue/Greenlight/Baupost CIKs were chosen by Coder B; not yet cross-checked against EDGAR's official CIK search. `// TODO: verify against EDGAR submissions endpoint` comment in `layers/institutional.ts` lists all 8 funds. Bad CIK = silent zero-result fund.
 
