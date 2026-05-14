@@ -6,18 +6,18 @@
 import type { FundActivism, FundPositionChange } from '../sources/edgar_13f.ts';
 import type { Ticker } from '../_types.ts';
 
-// TODO: verify CIK against EDGAR submissions endpoint for all 8 funds:
-// Berkshire Hathaway, Pershing Square, Scion Asset Management, Coatue Management,
-// Greenlight Capital, Baupost Group, Third Point, ValueAct Capital.
-// Coatue/Greenlight/Baupost in particular are unverified; cross-check via
-// https://data.sec.gov/submissions/CIK<padded>.json before trusting in prod.
+// All 8 CIKs verified 2026-05-14 via https://data.sec.gov/submissions/CIK<padded>.json
+// — each issuer is an active 13F-HR filer with the expected name.
+// Loop 6 fixed two bad guesses from the original ralph build: Coatue was
+// 0001603466 (actually Point72 Asset Management) and Baupost was 0001061165
+// (actually Lone Pine Capital). Corrected to 0001135730 and 0001061768.
 export const NOTABLE_FUNDS: ReadonlyMap<string, string> = new Map([
   ['0001067983', 'Berkshire Hathaway'],
   ['0001336528', 'Pershing Square'],
   ['0001649339', 'Scion Asset Management'],
-  ['0001603466', 'Coatue Management'],
+  ['0001135730', 'Coatue Management'],
   ['0001079114', 'Greenlight Capital'],
-  ['0001061165', 'Baupost Group'],
+  ['0001061768', 'Baupost Group'],
   ['0001040273', 'Third Point'],
   ['0001418814', 'ValueAct Capital'],
 ]);
