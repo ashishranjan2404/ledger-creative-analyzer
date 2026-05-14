@@ -40,13 +40,14 @@ const activism = (over: Partial<FundActivism> & {
   ...over,
 });
 
-test('NOTABLE_FUNDS — covers the original spec 8 + Loop 32 additions', () => {
-  // Loop 32 added Tiger Global + Lone Pine; original size 8 → 10.
-  assert.equal(NOTABLE_FUNDS.size, 10);
+test('NOTABLE_FUNDS — covers original spec + Loops 32-33 additions', () => {
+  // Loop 32: +Tiger/Lone Pine (8→10). Loop 33: +Capital Research/T Rowe (10→12).
+  assert.equal(NOTABLE_FUNDS.size, 12);
   const names = [...NOTABLE_FUNDS.values()];
   for (const expected of ['Berkshire Hathaway', 'Pershing Square', 'Scion Asset Management',
     'Coatue Management', 'Greenlight Capital', 'Baupost Group', 'Third Point', 'ValueAct Capital',
-    'Tiger Global Management', 'Lone Pine Capital']) {
+    'Tiger Global Management', 'Lone Pine Capital',
+    'Capital Research Global Investors', 'T. Rowe Price Associates']) {
     assert.ok(names.includes(expected), `missing notable fund: ${expected}`);
   }
 });

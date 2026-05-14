@@ -23,6 +23,9 @@ export const NOTABLE_FUNDS: ReadonlyMap<string, string> = new Map([
   // Added Loop 32 (verified 2026-05-14 via EDGAR FT search, forms=13F-HR):
   ['0001167483', 'Tiger Global Management'],
   ['0001061165', 'Lone Pine Capital'],
+  // Added Loop 33 (verified 2026-05-14 via data.sec.gov/submissions):
+  ['0001422848', 'Capital Research Global Investors'],
+  ['0000080255', 'T. Rowe Price Associates'],
 ]);
 
 export type InstitutionalSignal = {
