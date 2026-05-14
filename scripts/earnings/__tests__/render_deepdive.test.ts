@@ -282,3 +282,44 @@ test('L6/L7 numeric n/a guard: missing deltas render as n/a, never NaN', () => {
   assert.doesNotMatch(out, /NaN/);
   assert.match(out, /n\/a/);
 });
+
+// -------------------- L7 patent grants (new) --------------------
+
+test('L7 patents line renders count + recent title when set', () => {
+  const out = renderDeepDiveCard(card({
+    secular: secular({
+      patents: {
+        count: 7,
+        recentTitles: [
+          'Tensor core scheduling for transformer inference',
+          'second title that should not show',
+        ],
+      },
+    }),
+  }));
+  assert.match(out, /Patents \(180d\): 7 grants/);
+  // Only the first title appears (truncated to ~70 chars).
+  assert.match(out, /Tensor core scheduling for transformer inference/);
+  assert.doesNotMatch(out, /second title that should not show/);
+});
+
+test('L7 patents line absent when patents key omitted', () => {
+  // secular() factory does NOT set patents → render should not include the line.
+  const out = renderDeepDiveCard(card({ secular: secular() }));
+  assert.doesNotMatch(out, /Patents \(180d\)/);
+});
+
+test('L7 patents long title truncated with ellipsis', () => {
+  const longTitle = 'A'.repeat(120);
+  const out = renderDeepDiveCard(card({
+    secular: secular({ patents: { count: 1, recentTitles: [longTitle] } }),
+  }));
+  assert.match(out, /A+…/);
+});
+
+test('L7 patents zero-grants renders the count line but no title bullet', () => {
+  const out = renderDeepDiveCard(card({
+    secular: secular({ patents: { count: 0, recentTitles: [] } }),
+  }));
+  assert.match(out, /Patents \(180d\): 0 grants/);
+});

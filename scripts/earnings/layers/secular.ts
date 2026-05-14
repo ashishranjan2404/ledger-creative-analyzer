@@ -1,8 +1,10 @@
-// L7 secular trend detector: arxiv + HN mention velocity per ticker.
-// Per-keyword fetches via Promise.allSettled; per-keyword failures are warned and
-// dropped. If ALL keywords fail for a metric's *current* bucket, the metric is left
-// undefined (avoids misleading 'decelerating' from current=0 vs prior>0).
+// L7 secular trend detector: arxiv + HN mention velocity per ticker, plus a
+// per-ticker USPTO patent-grant count as a leading R&D-output proxy. Per-
+// keyword fetches via Promise.allSettled; per-keyword failures are warned and
+// dropped. If ALL keywords fail for a metric's *current* bucket, the metric is
+// left undefined (avoids misleading 'decelerating' from current=0 vs prior>0).
 import { fetchJson, fetchRss } from '../_http.ts';
+import { fetchPatentGrants } from '../sources/uspto.ts';
 import type { Ticker } from '../_types.ts';
 
 export type SecularTrend = 'accelerating' | 'flat' | 'decelerating';
@@ -16,6 +18,9 @@ export type SecularSignal = {
   hnMentions90d?: number;
   hnMentions90dPriorPeriod?: number;
   hnTrend?: SecularTrend;
+  // L7 patents: grant count over the last 180d + a few most-recent titles. Absent
+  // (not just zero) when the ticker has no assignee mapping or USPTO call failed.
+  patents?: { count: number; recentTitles: string[] };
 };
 
 export const TICKER_SECULAR_KEYWORDS: Readonly<Record<string, readonly string[]>> = {
@@ -27,6 +32,34 @@ export const TICKER_SECULAR_KEYWORDS: Readonly<Record<string, readonly string[]>
   AMD: ['ROCm', 'MI300', 'Instinct'],
   TSLA: ['Dojo', 'FSD', 'Optimus'],
   AAPL: ['Apple Silicon', 'CoreML', 'Vision Pro'],
+};
+
+// Canonical USPTO assignee organization strings. PatentsView matches via
+// `_contains` against `assignees_at_grant.assignee_organization` (case-
+// insensitive substring), so we use the legal-entity name that appears on the
+// grant cover sheet — NOT the brand. Ambiguous cases commented inline.
+export const TICKER_TO_PATENT_ASSIGNEE: Readonly<Record<string, string>> = {
+  // Apple files under the parent entity directly.
+  AAPL: 'Apple Inc.',
+  // MSFT: nearly all post-2014 grants assigned to the IP-holding subsidiary,
+  // not "Microsoft Corporation". `_contains` would over-match "Microsoft" to
+  // joint-venture noise (Microsoft Mobile Oy etc.), so we pin the LLC name.
+  MSFT: 'Microsoft Technology Licensing, LLC',
+  // Alphabet's primary tech IP holder remains Google LLC; very few grants are
+  // on the holding co directly. "Alphabet Inc." would miss the bulk.
+  GOOGL: 'Google LLC',
+  // Amazon Technologies, Inc. holds the patent portfolio; "Amazon.com, Inc."
+  // gets retail/logistics filings only. Tech subsidiary is the right anchor.
+  AMZN: 'Amazon Technologies, Inc.',
+  // NVIDIA files corporate-wide under the single legal entity.
+  NVDA: 'NVIDIA Corporation',
+  // Meta rebranded the assignee from "Facebook, Inc." to "Meta Platforms, Inc."
+  // in 2022; only the new name is relevant for a 180d window today.
+  META: 'Meta Platforms, Inc.',
+  // AMD files under the single legal entity.
+  AMD: 'Advanced Micro Devices, Inc.',
+  // Tesla, Inc. — single legal entity, includes auto + energy + Optimus filings.
+  TSLA: 'Tesla, Inc.',
 };
 
 const DAY_MS = 86_400_000;
@@ -90,11 +123,19 @@ function sumOk<T>(
 
 export async function fetchSecularSignal(
   ticker: Ticker,
-  options?: { arxivEndpoint?: string; hnEndpoint?: string; now?: Date },
+  options?: {
+    arxivEndpoint?: string;
+    hnEndpoint?: string;
+    usptoEndpoint?: string;
+    now?: Date;
+  },
 ): Promise<SecularSignal> {
   const asOf = options?.now ?? new Date();
   const keywords = TICKER_SECULAR_KEYWORDS[ticker] ?? [];
-  if (keywords.length === 0) return { ticker, asOf };
+  const assignee = TICKER_TO_PATENT_ASSIGNEE[ticker];
+  // No keywords AND no assignee → genuinely nothing to fetch. If we still have an
+  // assignee, fall through so patents render alone.
+  if (keywords.length === 0 && !assignee) return { ticker, asOf };
 
   const arxivEp = options?.arxivEndpoint ?? ARXIV_DEFAULT;
   const hnEp = options?.hnEndpoint ?? HN_DEFAULT;
@@ -102,17 +143,18 @@ export async function fetchSecularSignal(
   const cFrom = now - WIN_DAYS * DAY_MS;
   const pFrom = now - 2 * WIN_DAYS * DAY_MS;
 
-  // Three-wave grouped fan-out: each wave is one Promise.allSettled over the
-  // keyword list, so per-keyword failures stay independent within a (source,
-  // bucket) cell. Note arxiv current+prior share one fetch (same RSS payload,
-  // sliced client-side by countInWindow) — so it's 3 waves, not 4.
-  const [arxivS, hnRecentS, hnPriorS] = await Promise.all([
+  // Four-wave grouped fan-out: arxiv (current+prior share one fetch), HN current,
+  // HN prior, USPTO (single call). Promise.allSettled keeps each independent.
+  const [arxivS, hnRecentS, hnPriorS, usptoS] = await Promise.all([
     Promise.allSettled(keywords.map((k) => Promise.all([
       arxivCount(arxivEp, k, cFrom, now),
       arxivCount(arxivEp, k, pFrom, cFrom),
     ]))),
     Promise.allSettled(keywords.map((k) => hnCount(hnEp, k, cFrom, now))),
     Promise.allSettled(keywords.map((k) => hnCount(hnEp, k, pFrom, cFrom))),
+    assignee
+      ? fetchPatentGrants(assignee, 180, options?.usptoEndpoint)
+      : Promise.resolve(null),
   ]);
 
   const arxivCur = sumOk(arxivS, (v) => v[0], 'arxiv');
@@ -133,6 +175,13 @@ export async function fetchSecularSignal(
     out.hnMentions90d = hnCur.sum;
     out.hnMentions90dPriorPeriod = hnPri.sum;
     out.hnTrend = trend(hnCur.sum, hnPri.sum);
+  }
+  // USPTO: omit the field entirely when the call failed (null) so a render layer
+  // can distinguish "no mapping / endpoint dead" from "0 grants in 180d".
+  // fetchPatentGrants already catches its own errors → returns null on failure,
+  // so we don't need an outer settled wrapper here.
+  if (usptoS) {
+    out.patents = usptoS;
   }
   return out;
 }

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-import { fetchSecularSignal, TICKER_SECULAR_KEYWORDS } from '../layers/secular.ts';
+import { fetchSecularSignal, TICKER_SECULAR_KEYWORDS, TICKER_TO_PATENT_ASSIGNEE } from '../layers/secular.ts';
 import { toTicker } from '../_watchlist.ts';
 
 const NVDA = toTicker('NVDA');
@@ -32,10 +32,25 @@ let arxivShould500 = false;
 let server: Server;
 let arxivEndpoint = '';
 let hnEndpoint = '';
+let usptoEndpoint = '';
+// USPTO mock: by default returns a single grant so the fan-out has something to
+// thread through. Individual tests can override `usptoPatents` directly.
+let usptoPatents: Array<{ patent_id: string; patent_title: string; patent_date: string }> = [
+  { patent_id: '99', patent_title: 'mock grant', patent_date: '2026-04-01' },
+];
 
 before(async () => {
   server = createServer((req, res) => {
     const url = req.url ?? '';
+    // USPTO POST endpoint — drain body and return our canned patents list.
+    if (url.startsWith('/uspto')) {
+      req.on('data', () => { /* drain */ });
+      req.on('end', () => {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ patents: usptoPatents }));
+      });
+      return;
+    }
     const lower = decodeURIComponent(url).toLowerCase();
     const match = [...fixture.entries()].find(([kw]) => lower.includes(kw.toLowerCase()));
     if (!match) return res.writeHead(404).end();
@@ -64,6 +79,7 @@ before(async () => {
   const { port } = server.address() as AddressInfo;
   arxivEndpoint = `http://127.0.0.1:${port}/arxiv`;
   hnEndpoint = `http://127.0.0.1:${port}/hn`;
+  usptoEndpoint = `http://127.0.0.1:${port}/uspto`;
 });
 
 after(async () => new Promise<void>((res, rej) => server.close((e) => (e ? rej(e) : res()))));
@@ -71,13 +87,14 @@ after(async () => new Promise<void>((res, rej) => server.close((e) => (e ? rej(e
 beforeEach(() => {
   fixture = new Map();
   arxivShould500 = false;
+  usptoPatents = [{ patent_id: '99', patent_title: 'mock grant', patent_date: '2026-04-01' }];
 });
 
 test('happy path: both metrics populated, trend computed', async () => {
   // NVDA keywords: 'CUDA', 'GPU training', 'transformer training'. Two seeded.
   fixture.set('cuda', { arxivRecent: 60, arxivPrior: 40, hnCurrent: 30, hnPrior: 20 });
   fixture.set('gpu training', { arxivRecent: 60, arxivPrior: 40, hnCurrent: 30, hnPrior: 20 });
-  const sig = await fetchSecularSignal(NVDA, { arxivEndpoint, hnEndpoint, now: NOW });
+  const sig = await fetchSecularSignal(NVDA, { arxivEndpoint, hnEndpoint, usptoEndpoint, now: NOW });
   // Sums across 2 matching keywords (third 404s — failure swallowed).
   assert.equal(sig.arxivMentions90d, 120);
   assert.equal(sig.arxivMentions90dPriorPeriod, 80);
@@ -88,7 +105,7 @@ test('happy path: both metrics populated, trend computed', async () => {
 });
 
 test('ticker not in keyword map → all metrics undefined', async () => {
-  const sig = await fetchSecularSignal(toTicker('FAKE'), { arxivEndpoint, hnEndpoint, now: NOW });
+  const sig = await fetchSecularSignal(toTicker('FAKE'), { arxivEndpoint, hnEndpoint, usptoEndpoint, now: NOW });
   assert.equal(sig.arxivMentions90d, undefined);
   assert.equal(sig.arxivTrend, undefined);
   assert.equal(sig.hnMentions90d, undefined);
@@ -99,7 +116,7 @@ test('ticker not in keyword map → all metrics undefined', async () => {
 test('arxiv error swallowed; HN still computes', async () => {
   arxivShould500 = true;
   fixture.set('cuda', { arxivRecent: 0, arxivPrior: 0, hnCurrent: 100, hnPrior: 50 });
-  const sig = await fetchSecularSignal(NVDA, { arxivEndpoint, hnEndpoint, now: NOW });
+  const sig = await fetchSecularSignal(NVDA, { arxivEndpoint, hnEndpoint, usptoEndpoint, now: NOW });
   assert.equal(sig.arxivMentions90d, undefined);
   assert.equal(sig.arxivTrend, undefined);
   assert.equal(sig.hnMentions90d, 100);
@@ -109,13 +126,13 @@ test('arxiv error swallowed; HN still computes', async () => {
 
 test('trend math: accel / flat / decel boundaries', async () => {
   fixture.set('cuda', { arxivRecent: 120, arxivPrior: 80, hnCurrent: 100, hnPrior: 100 });
-  const accel = await fetchSecularSignal(NVDA, { arxivEndpoint, hnEndpoint, now: NOW });
+  const accel = await fetchSecularSignal(NVDA, { arxivEndpoint, hnEndpoint, usptoEndpoint, now: NOW });
   assert.equal(accel.arxivTrend, 'accelerating');
   fixture.set('cuda', { arxivRecent: 100, arxivPrior: 100, hnCurrent: 100, hnPrior: 100 });
-  const flat = await fetchSecularSignal(NVDA, { arxivEndpoint, hnEndpoint, now: NOW });
+  const flat = await fetchSecularSignal(NVDA, { arxivEndpoint, hnEndpoint, usptoEndpoint, now: NOW });
   assert.equal(flat.arxivTrend, 'flat');
   fixture.set('cuda', { arxivRecent: 50, arxivPrior: 100, hnCurrent: 100, hnPrior: 100 });
-  const decel = await fetchSecularSignal(NVDA, { arxivEndpoint, hnEndpoint, now: NOW });
+  const decel = await fetchSecularSignal(NVDA, { arxivEndpoint, hnEndpoint, usptoEndpoint, now: NOW });
   assert.equal(decel.arxivTrend, 'decelerating');
 });
 
@@ -126,4 +143,31 @@ test('keyword map covers 8 watchlist tickers', () => {
     assert.ok(kws, `${t} has keywords`);
     assert.ok(kws!.length >= 2 && kws!.length <= 4, `${t} keyword count ~3`);
   }
+});
+
+test('patents field populated when ticker has assignee mapping', async () => {
+  fixture.set('cuda', { arxivRecent: 10, arxivPrior: 5, hnCurrent: 8, hnPrior: 4 });
+  usptoPatents = [
+    { patent_id: 'A', patent_title: 'Memory coherence in AI accelerators', patent_date: '2026-04-20' },
+    { patent_id: 'B', patent_title: 'Sparse tensor compaction', patent_date: '2026-03-10' },
+  ];
+  const sig = await fetchSecularSignal(NVDA, { arxivEndpoint, hnEndpoint, usptoEndpoint, now: NOW });
+  assert.ok(sig.patents, 'patents should be defined when assignee map has the ticker');
+  assert.equal(sig.patents.count, 2);
+  assert.deepEqual(sig.patents.recentTitles, [
+    'Memory coherence in AI accelerators',
+    'Sparse tensor compaction',
+  ]);
+  // Sanity: assignee map covers NVDA
+  assert.equal(TICKER_TO_PATENT_ASSIGNEE['NVDA'], 'NVIDIA Corporation');
+});
+
+test('patents absent when ticker has no assignee mapping', async () => {
+  // FAKE ticker: neither in keyword map nor assignee map → no USPTO fetch fired,
+  // and the patents field stays undefined on the returned signal.
+  const sig = await fetchSecularSignal(toTicker('FAKE'), {
+    arxivEndpoint, hnEndpoint, usptoEndpoint, now: NOW,
+  });
+  assert.equal(sig.patents, undefined);
+  assert.equal(TICKER_TO_PATENT_ASSIGNEE['FAKE'], undefined);
 });

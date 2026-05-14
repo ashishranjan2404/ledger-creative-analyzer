@@ -121,12 +121,31 @@ function operationalRows(o: OperationalSignal | undefined): string[] | null {
 
 const secRow = (lbl: string, c: number | undefined, p: number | undefined, t: SecularTrend | undefined): string | null =>
   c == null ? null : `  ${lbl} ${fmtNum(c).padStart(5)} (was ${fmtNum(p)})  ${t ? ARROW[t] : '·'} ${t ?? ''}`.trimEnd();
+
+// Patent grant row: count line is always rendered when the field is present
+// (even at 0 — that's a real "no R&D output in 180d" signal). Title preview
+// is shown only when at least one title exists, truncated to keep the card
+// scannable. Width 70 chosen to match the secular column padding.
+const PATENT_TITLE_MAX = 70;
+function truncate(s: string, max: number): string {
+  return s.length <= max ? s : `${s.slice(0, max - 1).trimEnd()}…`;
+}
+function patentRows(p: SecularSignal['patents']): string[] {
+  if (!p) return [];
+  const out: string[] = [`  Patents (180d): ${p.count} grants`];
+  if (p.recentTitles.length > 0 && p.recentTitles[0]) {
+    out.push(`    • ${truncate(p.recentTitles[0], PATENT_TITLE_MAX)}`);
+  }
+  return out;
+}
+
 function secularRows(s: SecularSignal | undefined): string[] | null {
   if (!s) return null;
   const rs = [
     secRow('arxiv mentions/90d:', s.arxivMentions90d, s.arxivMentions90dPriorPeriod, s.arxivTrend),
     secRow('HN mentions/90d:   ', s.hnMentions90d, s.hnMentions90dPriorPeriod, s.hnTrend),
   ].filter((r): r is string => r !== null);
+  rs.push(...patentRows(s.patents));
   return rs.length === 0 ? null : rs;
 }
 
