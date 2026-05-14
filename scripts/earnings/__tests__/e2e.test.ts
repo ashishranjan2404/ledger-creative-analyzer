@@ -33,8 +33,8 @@ const REROUTE_HOSTS = new Set([
   // New tactical sources (keyless): all four sentiment fetchers now run by
   // default so the fixture must cover them or the e2e attempts real network.
   'apewisdom.io', 'api.pullpush.io', 'arctic-shift.photon-reddit.com',
-  // Quiver: only reached when QUIVER_API_KEY is set (event_poll still gates on
-  // it); included for completeness.
+  // Quiver: dormant after the L8 free-source swap (sources/quiver.ts kept in
+  // tree for optional paid use); host listed defensively for any future re-wire.
   'api.quiverquant.com',
   // L8 GOV free sources (deepdive, always-on after the Quiver→free swap):
   // Senate/House stock-watcher GitHub mirrors, LDA filings API, USAspending awards.
@@ -114,8 +114,8 @@ const HANDLERS: Array<{ match: (u: URL) => boolean; h: Handler }> = [
   // earlier rule already returns empty data → fetchRss handles both empty JSON
   // and empty RSS shapes gracefully.
 
-  // Quiver historical endpoints (only reachable when QUIVER_API_KEY is set;
-  // e2e leaves the key unset, so this is defensive coverage only).
+  // Quiver historical endpoints — dormant adapter retained; defensive coverage
+  // in case sources/quiver.ts is ever re-wired into a routine.
   { match: (u) => u.pathname.startsWith('/beta/historical/'), h: () => ({ json: [] }) },
   // L8 GOV free sources (deepdive, always-on):
   // Senate/House stock-watcher GitHub mirrors — fetchJson expects an array.
@@ -172,12 +172,11 @@ before(async () => {
   }) as typeof fetch;
   for (const [k, v] of Object.entries(ENV)) { savedEnv[k] = process.env[k]; process.env[k] = v; }
   // ANTHROPIC_API_KEY intentionally unset → narrative path skipped (V1).
-  // QUIVER_API_KEY intentionally unset → event_poll's congressional alert
-  // path is skipped; deepdive's L8 now runs unconditionally against the
-  // free gov sources (Senate/House mirrors, LDA, USAspending) and the
-  // fixture returns empty for each → renderer suppresses the GOV block.
+  // QUIVER_API_KEY no longer consulted by either routine (post free-source
+  // swap); deepdive L8 + event_poll congressional both run unconditionally
+  // against the free gov sources (Senate/House mirrors, LDA, USAspending)
+  // and the fixture returns empty for each → renderer suppresses the GOV block.
   delete process.env['ANTHROPIC_API_KEY'];
-  delete process.env['QUIVER_API_KEY'];
   // Bypass the rate limiter: tactical now fans into PullPush/Arctic-Shift/Reddit-RSS,
   // each of which calls acquireToken per (sub, ticker). The token-bucket would
   // serialize 32 calls at 10/min for Reddit RSS → minutes-long e2e. Resolve

@@ -2,7 +2,7 @@ import { TICKERS } from './_watchlist.ts';
 import { assertPersonalRecipient } from './_recipient.ts';
 import { fetchRecentForm4 } from './sources/edgar_form4.ts';
 import { fetchNotableFund13F, fetchActivism } from './sources/edgar_13f.ts';
-import { fetchCongressionalTrades, type CongressionalTrade } from './sources/quiver.ts';
+import { fetchCongressionalTrades, type CongressionalTrade } from './sources/congress_disclosure.ts';
 import { detectClusterBuys } from './layers/insider.ts';
 import {
   buildInstitutionalSignals, shouldAlertInstitutional, NOTABLE_FUNDS,
@@ -53,16 +53,13 @@ export async function runEventPoll(): Promise<{ alerts: number; newAlerts: numbe
   const env = readEnv();
   assertPersonalRecipient(env.RECIPIENT);
 
-  // QUIVER_API_KEY gates L8 congressional alerts identically to ANTHROPIC_API_KEY's
-  // L4 gate in deepdive — when unset, resolve to [] so the rest of the run proceeds.
-  const quiverKey = process.env['QUIVER_API_KEY'] ?? null;
+  // L8 congressional alerts run unconditionally — congress_disclosure.ts pulls
+  // free public feeds (no API key), so the fan-out always includes a congress leg.
   const r = await settledByName({
     form4: fetchRecentForm4(TICKERS, FORM4_SINCE_DAYS),
     notable13F: fetchNotableFund13F([...NOTABLE_FUNDS.keys()]),
     activism: fetchActivism(TICKERS, ACTIVISM_SINCE_DAYS),
-    congress: quiverKey
-      ? fetchCongressionalTrades(TICKERS, CONGRESS_SINCE_DAYS, quiverKey)
-      : Promise.resolve([] as CongressionalTrade[]),
+    congress: fetchCongressionalTrades(TICKERS, CONGRESS_SINCE_DAYS),
   });
 
   // L2: cluster-buy detector over Form 4 transactions.

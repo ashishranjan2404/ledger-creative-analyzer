@@ -18,9 +18,9 @@ All 3 must be present. `readEnv` aggregates and throws once with EVERY missing v
 - `BUTTERBASE_SERVICE_KEY` — reads/writes `earnings_alert_seen` (dedup ledger) and writes `audit_log` row on `app_36ybfio2fiy7`.
 - `RECIPIENT` — must equal `ashishranjan2404@gmail.com` (`assertPersonalRecipient` is hard-locked; any other value throws `personal tool only`).
 
-## Optional env vars
+## Congressional alert source (keyless, always-on)
 
-- `QUIVER_API_KEY` (**optional**) — enables the L8 congressional alert path. When set, `runEventPoll` fetches the last 7 days of House/Senate trades on the watchlist and emits one `'congressional'` alert per ticker that accrued trades (grouped: subject names the first rep + `+N more` if multiple; body lists each trade with rep/party/chamber/date/amount). Dedup `sourceId` is `<TICKER>|<sorted-tx-dates>` so re-polls of the same trade set don't re-alert, while a new trade by another rep produces a new alert. When **unset**, the congressional fetch is skipped entirely (resolves to `[]`), no `[congress]` warn, and the existing form4_cluster + 13D/G alert paths are unaffected.
+`runEventPoll` fetches the last 7 days of House/Senate trades on the watchlist from the free Senate + House Stock Watcher GitHub mirrors (no key required) and emits one `'congressional'` alert per ticker that accrued trades (grouped: subject names the first rep + `+N more` if multiple; body lists each trade with rep/party/chamber/date/amount). Dedup `sourceId` is `<TICKER>|<sorted-tx-dates>` so re-polls of the same trade set don't re-alert, while a new trade by another rep produces a new alert. Source-fetch failures degrade independently — Form 4 + 13D/G alert paths are unaffected.
 
 ## Operator guard
 
