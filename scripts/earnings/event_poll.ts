@@ -14,6 +14,7 @@ import {
 } from './render_alert.ts';
 import { sendEmail } from './send.ts';
 import { insertRow } from './_butterbase.ts';
+import { readRequiredEnv } from './_env.ts';
 import type { Ticker } from './_types.ts';
 
 export const ENV_VARS = ['RESEND_KEY', 'BUTTERBASE_SERVICE_KEY', 'RECIPIENT'] as const;
@@ -24,14 +25,9 @@ const FORM4_SINCE_DAYS = 7;     // hourly cron easily covers cluster-buy 30d win
 const ACTIVISM_SINCE_DAYS = 30; // 13D/G filings stay relevant for ~30 days
 const CONGRESS_SINCE_DAYS = 7;  // reporting lag is up to 45d but most appear within a week of trade.
 
-// WHY aggregate-throw: same pattern as tactical/deepdive readEnv — operator
-// fixes all gaps in one cron edit instead of N rounds.
+// Aggregate-throw via shared _env.ts.
 export function readEnv(env: NodeJS.ProcessEnv = process.env): Record<EnvKey, string> {
-  const out = {} as Record<EnvKey, string>;
-  const missing: string[] = [];
-  for (const k of ENV_VARS) { const v = env[k]; if (!v) missing.push(k); else out[k] = v; }
-  if (missing.length) throw new Error(`missing env var(s): ${missing.join(', ')}`);
-  return out;
+  return readRequiredEnv(ENV_VARS, env);
 }
 
 // WHY named-object Promise.allSettled: results addressed by NAME, not index —

@@ -15,6 +15,7 @@ import { fetchGovContracts } from './sources/gov_contracts.ts';
 import { renderDeepDiveText, renderDeepDiveSubject, type DeepDiveCard, type GovCapitalSignal } from './render_deepdive.ts';
 import { sendEmail } from './send.ts';
 import { insertRow, type ButterbaseConfig } from './_butterbase.ts';
+import { readRequiredEnv } from './_env.ts';
 import type { Ticker } from './_types.ts';
 
 export const ENV_VARS = ['RESEND_KEY', 'BUTTERBASE_SERVICE_KEY', 'RECIPIENT'] as const;
@@ -27,14 +28,10 @@ const GOV_CONGRESS_SINCE_DAYS = 90;   // 1 quarter — long enough to catch infr
 const GOV_LOBBY_QUARTERS = 4;          // trailing 4 quarters keeps section relevant week-to-week.
 const GOV_CONTRACTS_SINCE_DAYS = 180;  // contract awards are sparse; 2 quarters surfaces meaningful flow.
 
-// WHY aggregate-throw: matches tactical.readEnv — operator fixes all gaps in one
-// cron edit. ANTHROPIC_API_KEY stays OPTIONAL: missing key just disables L4.
+// Aggregate-throw via shared _env.ts. ANTHROPIC_API_KEY + FINNHUB_KEY stay
+// OPTIONAL and are read inline at the call site.
 export function readEnv(env: NodeJS.ProcessEnv = process.env): Record<EnvKey, string> {
-  const out = {} as Record<EnvKey, string>;
-  const missing: string[] = [];
-  for (const k of ENV_VARS) { const v = env[k]; if (!v) missing.push(k); else out[k] = v; }
-  if (missing.length) throw new Error(`missing env var(s): ${missing.join(', ')}`);
-  return out;
+  return readRequiredEnv(ENV_VARS, env);
 }
 
 // ISO 8601 week-of-year (1..53). Matches `date -V` / Postgres EXTRACT(week).

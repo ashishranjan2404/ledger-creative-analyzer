@@ -14,6 +14,7 @@ import { detectFroth } from './froth.ts';
 import { renderTacticalText, renderTacticalSubject, type TacticalDigest } from './render_tactical.ts';
 import { sendEmail } from './send.ts';
 import { insertRow, insertRows } from './_butterbase.ts';
+import { readRequiredEnv, readOptionalEnv } from './_env.ts';
 import type { EarningsEvent, RawItem, Finding, Ticker } from './_types.ts';
 
 export const ENV_VARS = ['FINNHUB_KEY', 'POLYGON_KEY', 'BENZINGA_KEY',
@@ -28,15 +29,9 @@ type Env = Record<EnvKey, string> & Partial<Record<OptionalEnvKey, string>>;
 const SUBS = ['wallstreetbets', 'stocks', 'investing', 'SecurityAnalysis'] as const;
 const FROM = 'thedi@platformy.org';
 
-// WHY aggregate (vs per-var fail-fast): one error message lists EVERY missing
-// required var, so an operator fixes all gaps in one cron edit, not N rounds.
+// Aggregate-throw + optional-merge. Shared helpers in _env.ts; see WHY there.
 export function readEnv(env: NodeJS.ProcessEnv = process.env): Env {
-  const out = {} as Env;
-  const missing: string[] = [];
-  for (const k of ENV_VARS) { const v = env[k]; if (!v) missing.push(k); else out[k] = v; }
-  if (missing.length) throw new Error(`missing env var(s): ${missing.join(', ')}`);
-  for (const k of OPTIONAL_ENV_VARS) { const v = env[k]; if (v) out[k] = v; }
-  return out;
+  return { ...readRequiredEnv(ENV_VARS, env), ...readOptionalEnv(OPTIONAL_ENV_VARS, env) };
 }
 
 const ymd = (d: Date): string => d.toISOString().slice(0, 10);
