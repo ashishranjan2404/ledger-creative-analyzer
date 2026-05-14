@@ -102,6 +102,61 @@ function retryAfterMs(header: string | null): number | null {
 
 function sleep(ms: number): Promise<void> { return new Promise((r) => setTimeout(r, ms)); }
 
+// WHY circuit breaker (separate from fetchJsonWithRetry): retries handle a
+// *transient* spike, but if Yahoo/StockTwits/ApeWisdom go *persistently* sour
+// (DNS poisoning, regional outage, API key revoked, schema change throwing in
+// our parser), retrying every per-ticker call wastes seconds × tickers × the
+// whole cron interval. The breaker short-circuits AT THE ADAPTER level after N
+// consecutive failures so the source is skipped fast and the rest of the run
+// proceeds. open-for-60s gives the upstream room to recover without us hot-
+// looping; half-open (single trial) is the standard pattern — one cheap probe
+// instead of slamming the source the moment the window expires. Pure in-proc
+// state is fine for now (cron runs are short-lived; Redis-backed state is a
+// future concern only if we move to long-lived workers).
+type BreakerState = { failures: number; openedAt: number };
+const breakers = new Map<string, BreakerState>();
+
+export type CircuitBreakerOpts = {
+  threshold?: number; // consecutive failures to trip (default 5)
+  openMs?: number;    // how long to stay open before half-open probe (default 60s)
+};
+
+export async function withCircuitBreaker<T>(
+  label: string,
+  fn: () => Promise<T>,
+  opts: CircuitBreakerOpts = {},
+): Promise<T> {
+  const threshold = opts.threshold ?? 5;
+  const openMs = opts.openMs ?? 60_000;
+  const s = breakers.get(label) ?? { failures: 0, openedAt: 0 };
+  if (s.failures >= threshold) {
+    const elapsed = Date.now() - s.openedAt;
+    if (elapsed < openMs) {
+      throw new Error(`circuit breaker open for ${label}`);
+    }
+    // half-open: fall through and allow exactly one trial attempt.
+  }
+  try {
+    const out = await fn();
+    // success → close (whether we were closed or half-open).
+    breakers.delete(label);
+    return out;
+  } catch (e) {
+    const failures = s.failures + 1;
+    if (failures >= threshold) {
+      // tripped (or half-open trial failed) → (re)open with a fresh timer.
+      breakers.set(label, { failures, openedAt: Date.now() });
+    } else {
+      breakers.set(label, { failures, openedAt: s.openedAt });
+    }
+    throw e;
+  }
+}
+
+export function _resetCircuitBreakers(): void {
+  breakers.clear();
+}
+
 export async function fetchRss(
   url: string,
   init?: RequestInit,

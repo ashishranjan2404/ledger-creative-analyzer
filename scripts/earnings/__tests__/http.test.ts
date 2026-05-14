@@ -1,9 +1,15 @@
-import { test, before, after } from 'node:test';
+import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-import { fetchWithTimeout, fetchJson, fetchRss } from '../_http.ts';
+import {
+  fetchWithTimeout,
+  fetchJson,
+  fetchRss,
+  withCircuitBreaker,
+  _resetCircuitBreakers,
+} from '../_http.ts';
 
 let server: Server;
 let base: string;
@@ -98,4 +104,114 @@ test('fetchRss handles Atom <entry> with link href and summary', async () => {
 test('fetchRss returns [] for an empty feed', async () => {
   const items = await fetchRss(`data:application/xml,${encodeURIComponent('<feed></feed>')}`);
   assert.deepEqual(items, []);
+});
+
+// ---- withCircuitBreaker ----
+
+beforeEach(() => {
+  _resetCircuitBreakers();
+});
+
+test('withCircuitBreaker trips after threshold consecutive failures', async () => {
+  let calls = 0;
+  const boom = () => {
+    calls++;
+    return Promise.reject(new Error('boom'));
+  };
+  for (let i = 0; i < 5; i++) {
+    await assert.rejects(() => withCircuitBreaker('trip', boom), /boom/);
+  }
+  assert.equal(calls, 5);
+});
+
+test('withCircuitBreaker open state throws without invoking fn', async () => {
+  let calls = 0;
+  const boom = () => {
+    calls++;
+    return Promise.reject(new Error('boom'));
+  };
+  for (let i = 0; i < 5; i++) {
+    await assert.rejects(() => withCircuitBreaker('open', boom), /boom/);
+  }
+  assert.equal(calls, 5);
+  // 6th call: breaker is open, fn must NOT be invoked.
+  await assert.rejects(
+    () => withCircuitBreaker('open', boom),
+    /^Error: circuit breaker open for open$/,
+  );
+  assert.equal(calls, 5);
+});
+
+test('withCircuitBreaker half-open success closes the breaker', async () => {
+  for (let i = 0; i < 5; i++) {
+    await assert.rejects(
+      () => withCircuitBreaker('half-ok', () => Promise.reject(new Error('boom')), { openMs: 10 }),
+      /boom/,
+    );
+  }
+  // Wait for openMs to elapse so the next call is half-open.
+  await new Promise((r) => setTimeout(r, 20));
+  const value = await withCircuitBreaker('half-ok', () => Promise.resolve('hello'), { openMs: 10 });
+  assert.equal(value, 'hello');
+  // After success, breaker is closed: a subsequent failure must NOT immediately throw "open".
+  await assert.rejects(
+    () => withCircuitBreaker('half-ok', () => Promise.reject(new Error('boom2')), { openMs: 10 }),
+    /boom2/,
+  );
+});
+
+test('withCircuitBreaker half-open failure reopens with fresh timer', async () => {
+  for (let i = 0; i < 5; i++) {
+    await assert.rejects(
+      () => withCircuitBreaker('half-fail', () => Promise.reject(new Error('boom')), { openMs: 20 }),
+      /boom/,
+    );
+  }
+  await new Promise((r) => setTimeout(r, 30));
+  // Half-open trial fails → breaker re-opens.
+  await assert.rejects(
+    () => withCircuitBreaker('half-fail', () => Promise.reject(new Error('still-boom')), { openMs: 20 }),
+    /still-boom/,
+  );
+  // Immediately afterwards it should be open again (NOT half-open), so fn is skipped.
+  let calls = 0;
+  await assert.rejects(
+    () =>
+      withCircuitBreaker(
+        'half-fail',
+        () => {
+          calls++;
+          return Promise.resolve('nope');
+        },
+        { openMs: 20 },
+      ),
+    /^Error: circuit breaker open for half-fail$/,
+  );
+  assert.equal(calls, 0);
+});
+
+test('withCircuitBreaker honors custom threshold and openMs', async () => {
+  let calls = 0;
+  const boom = () => {
+    calls++;
+    return Promise.reject(new Error('boom'));
+  };
+  // threshold=2: trips after 2 failures.
+  await assert.rejects(() => withCircuitBreaker('custom', boom, { threshold: 2, openMs: 50 }), /boom/);
+  await assert.rejects(() => withCircuitBreaker('custom', boom, { threshold: 2, openMs: 50 }), /boom/);
+  assert.equal(calls, 2);
+  // Now open: fn must not be invoked.
+  await assert.rejects(
+    () => withCircuitBreaker('custom', boom, { threshold: 2, openMs: 50 }),
+    /^Error: circuit breaker open for custom$/,
+  );
+  assert.equal(calls, 2);
+  // After openMs elapses → half-open → success closes.
+  await new Promise((r) => setTimeout(r, 60));
+  const value = await withCircuitBreaker(
+    'custom',
+    () => Promise.resolve('back'),
+    { threshold: 2, openMs: 50 },
+  );
+  assert.equal(value, 'back');
 });

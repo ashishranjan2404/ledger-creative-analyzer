@@ -1,4 +1,4 @@
-import { fetchJson } from '../_http.ts';
+import { fetchJson, withCircuitBreaker } from '../_http.ts';
 import type { Ticker } from '../_types.ts';
 
 export type StocktwitsSentiment = 'Bullish' | 'Bearish' | null;
@@ -55,7 +55,9 @@ export async function fetchStocktwitsForTicker(
   endpoint: string = DEFAULT_ENDPOINT,
 ): Promise<StocktwitsItem[]> {
   const url = `${endpoint}/streams/symbol/${encodeURIComponent(ticker)}.json`;
-  const json = await fetchJson<StocktwitsResp>(url);
+  const json = await withCircuitBreaker('stocktwits', () =>
+    fetchJson<StocktwitsResp>(url),
+  );
   const out: StocktwitsItem[] = [];
   for (const m of json.messages ?? []) {
     const item = toItem(ticker, m);

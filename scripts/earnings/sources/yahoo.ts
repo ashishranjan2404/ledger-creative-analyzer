@@ -1,4 +1,4 @@
-import { fetchRss, type RssItem } from '../_http.ts';
+import { fetchRss, withCircuitBreaker, type RssItem } from '../_http.ts';
 import type { RawItem, Ticker } from '../_types.ts';
 
 // WHY default endpoint: Yahoo's free RSS surface for per-symbol headlines.
@@ -38,7 +38,11 @@ export async function fetchYahooNews(
   if (tickers.length === 0) return [];
   const cutoffMs = Date.now() - hoursBack * 3_600_000;
   const settled = await Promise.allSettled(
-    tickers.map((t) => fetchRss(feedUrl(endpoint, t)).then((items) => ({ t, items }))),
+    tickers.map((t) =>
+      withCircuitBreaker('yahoo', () => fetchRss(feedUrl(endpoint, t))).then(
+        (items) => ({ t, items }),
+      ),
+    ),
   );
   const out: RawItem[] = [];
   for (let i = 0; i < settled.length; i++) {
