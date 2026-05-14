@@ -67,10 +67,15 @@ export function fetchXbrlConcept(
   return p;
 }
 
+// XBRL companyconcept responses are 10-100KB JSON (full quarterly history per
+// concept) — the default 8s timeout in fetchWithTimeout is tight under slow
+// SEC origin conditions. 20s gives one extra round of TCP retransmits without
+// changing the global default.
+const XBRL_TIMEOUT_MS = 20_000;
 async function doFetch(ticker: Ticker, tag: string, endpoint: string): Promise<XbrlPoint[]> {
   const cik = await tickerToCik(ticker, endpoint);
   const url = `${endpoint}/api/xbrl/companyconcept/CIK${cik}/us-gaap/${tag}.json`;
-  const j = await fetchJsonWithRetry<ConceptResponse>(url, { headers: HEADERS });
+  const j = await fetchJsonWithRetry<ConceptResponse>(url, { headers: HEADERS }, { timeoutMs: XBRL_TIMEOUT_MS });
   const rows = j.units?.USD ?? [];
   const out: XbrlPoint[] = [];
   for (const r of rows) {
