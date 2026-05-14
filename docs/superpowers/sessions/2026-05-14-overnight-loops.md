@@ -111,6 +111,7 @@ Each row appended after loop completion.
 
 - **Loop 38** (congressional leadership filter): static allowlist of leadership / committee chairs rots with every new Congress. The right trigger is live signal-to-noise data, which we don't have. Updated routine prompt md.
 - **Loop 39** (SEC enforcement actions): watchlist is all mega-cap (Apple/Microsoft/Google/Amazon/NVDA/Meta/AMD/Tesla). AAER + Litigation Release frequency against this cohort is ~1-2/year — near-zero signal per weekly digest. Would add an RSS adapter + filter logic for <1 alert/month. Reconsider only if watchlist expands to mid/small caps where enforcement targets are realistic.
+- **Loop 48-49** (dedicated integration tests for deepdive / event_poll flows): existing `__tests__/e2e.test.ts` already drives `runTactical` end-to-end with all 14+ sources mocked, plus Loops 43-45 added per-renderer snapshot tests. Adding a second integration shell for deepdive/event_poll would duplicate the e2e fixture surface with marginal extra coverage. Better to invest in Loop 50's historical-bug regression suite, which targets specific bugs that any integration test would only catch incidentally.
 
 ---
 
