@@ -3,7 +3,7 @@ import { assertPersonalRecipient } from './_recipient.ts';
 import { fetchFundamentalsTrajectory, type FundamentalsTrajectory } from './layers/fundamentals.ts';
 import { fetchValuationContext, type ValuationContext } from './layers/valuation.ts';
 import {
-  extractNarrativeShift, defaultLlmClient, type NarrativeShift, type LlmClient,
+  buildLlmClientOrNull, groupTranscriptsByTicker, maybeNarrative, type LlmClient,
 } from './layers/narrative.ts';
 import { fetchOperationalSignal, type OperationalSignal } from './layers/operational.ts';
 import { fetchSecularSignal, type SecularSignal } from './layers/secular.ts';
@@ -55,40 +55,8 @@ export function rotateCards<T>(cards: readonly T[], date: Date, bucket = ROTATIO
   return out;
 }
 
-// WHY env-injectable + null-on-absent: missing ANTHROPIC_API_KEY must NOT crash
-// the run — we just skip L4. Injectable env makes both branches unit-testable.
-export function buildLlmClientOrNull(env: NodeJS.ProcessEnv = process.env): LlmClient | null {
-  if (!env.ANTHROPIC_API_KEY) return null;
-  try { return defaultLlmClient({ apiKey: env.ANTHROPIC_API_KEY }); }
-  catch (e) { console.warn(`[narrative] LLM client init failed: ${String(e)}`); return null; }
-}
-
-// Group flat transcript list by ticker, sort newest→oldest. O(1) per-card lookup.
-export function groupTranscriptsByTicker(
-  rows: readonly Transcript[],
-): ReadonlyMap<Ticker, readonly Transcript[]> {
-  const map = new Map<Ticker, Transcript[]>();
-  for (const r of rows) { const arr = map.get(r.ticker) ?? []; arr.push(r); map.set(r.ticker, arr); }
-  for (const arr of map.values()) arr.sort((a, b) => b.filingDate.getTime() - a.filingDate.getTime());
-  return map;
-}
-
-// WHY narrative kept off Promise.allSettled: distinct LLM failure path we want
-// surfaced as `[narrative TICKER]` (qualitatively different from EDGAR errors).
-async function maybeNarrative(
-  ticker: Ticker, transcripts: readonly Transcript[] | undefined, llm: LlmClient | null,
-): Promise<NarrativeShift | null> {
-  if (!llm || !transcripts || transcripts.length < 2) return null;
-  const [current, prior] = transcripts;
-  if (!current || !prior) return null;
-  try { return await extractNarrativeShift(current, prior, llm); }
-  catch (e) { console.warn(`[narrative ${ticker}] ${String(e)}`); return null; }
-}
-
-// L8 GOV: always-on. Each adapter pulls from a free, keyless gov source
-// (Senate/House stock-watcher GitHub mirrors, LDA, USAspending) and uses
-// Promise.allSettled internally per-ticker, so a single-ticker call returns
-// [] on miss without throwing. Empty in all 3 → null suppresses the block.
+// L4 helpers (buildLlmClientOrNull/groupTranscriptsByTicker/maybeNarrative) live in layers/narrative.ts.
+// L8 GOV: always-on, keyless. Per-ticker fan-out via Promise.allSettled — empty in all 3 → null.
 async function maybeGovCapital(ticker: Ticker): Promise<QuiverSignal | null> {
   const [cR, lR, gR] = await Promise.allSettled([
     fetchCongressionalTrades([ticker], GOV_CONGRESS_SINCE_DAYS),
@@ -98,9 +66,8 @@ async function maybeGovCapital(ticker: Ticker): Promise<QuiverSignal | null> {
   const congressional = cR.status === 'fulfilled' ? cR.value : [];
   const lobbying = lR.status === 'fulfilled' ? lR.value : [];
   const contracts = gR.status === 'fulfilled' ? gR.value : [];
-  if (cR.status === 'rejected') console.warn(`[gov/congress ${ticker}] ${String(cR.reason)}`);
-  if (lR.status === 'rejected') console.warn(`[gov/lobbying ${ticker}] ${String(lR.reason)}`);
-  if (gR.status === 'rejected') console.warn(`[gov/contracts ${ticker}] ${String(gR.reason)}`);
+  for (const [r, k] of [[cR, 'congress'], [lR, 'lobbying'], [gR, 'contracts']] as const)
+    if (r.status === 'rejected') console.warn(`[gov/${k} ${ticker}] ${String(r.reason)}`);
   if (congressional.length === 0 && lobbying.length === 0 && contracts.length === 0) return null;
   return { congressional, lobbying, contracts };
 }
@@ -154,13 +121,8 @@ export async function runDeepDive(): Promise<{ sent: boolean; cards: number; ms:
     } catch (e) { console.warn(`[transcripts] ${String(e)} — narrative skipped this run`); }
   }
 
-  // L8 GOV: always attempted via free keyless sources. Empty across all 3
-  // adapters → maybeGovCapital returns null → renderer suppresses the
-  // ▌GOVERNMENT & CAPITAL block, same UX as the prior key-gated path.
   // Parallel per-ticker: 4 × ~6 EDGAR calls = 24 in flight, within SEC's 10/sec.
-  const cards = await Promise.all(slate.map(
-    (t) => buildCard(t, today, transcriptsByTicker, llm),
-  ));
+  const cards = await Promise.all(slate.map((t) => buildCard(t, today, transcriptsByTicker, llm)));
 
   const subject = renderDeepDiveSubject(today, cards.length);
   const text = renderDeepDiveText(cards, today);

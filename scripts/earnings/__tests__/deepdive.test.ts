@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 
 import {
   ENV_VARS, readEnv, runDeepDive, rotateCards, weekOfYear,
-  buildLlmClientOrNull, groupTranscriptsByTicker,
 } from '../deepdive.ts';
+import { buildLlmClientOrNull, groupTranscriptsByTicker } from '../layers/narrative.ts';
 import { RECIPIENT } from '../_recipient.ts';
 import { toTicker } from '../_watchlist.ts';
 import type { Transcript } from '../sources/transcripts.ts';

@@ -113,3 +113,36 @@ export function defaultLlmClient(opts: DefaultLlmClientOptions = {}): LlmClient 
     return text;
   };
 }
+
+// === Orchestration helpers used by the Sunday deep-dive run. Lifted from
+// deepdive.ts (Loop 7) so each routine entry stays under its line budget. ===
+
+// WHY env-injectable + null-on-absent: missing ANTHROPIC_API_KEY must NOT crash
+// the run — we just skip L4. Injectable env makes both branches unit-testable.
+export function buildLlmClientOrNull(env: NodeJS.ProcessEnv = process.env): LlmClient | null {
+  if (!env.ANTHROPIC_API_KEY) return null;
+  try { return defaultLlmClient({ apiKey: env.ANTHROPIC_API_KEY }); }
+  catch (e) { console.warn(`[narrative] LLM client init failed: ${String(e)}`); return null; }
+}
+
+// Group flat transcript list by ticker, sort newest→oldest. O(1) per-card lookup.
+export function groupTranscriptsByTicker(
+  rows: readonly Transcript[],
+): ReadonlyMap<Ticker, readonly Transcript[]> {
+  const map = new Map<Ticker, Transcript[]>();
+  for (const r of rows) { const arr = map.get(r.ticker) ?? []; arr.push(r); map.set(r.ticker, arr); }
+  for (const arr of map.values()) arr.sort((a, b) => b.filingDate.getTime() - a.filingDate.getTime());
+  return map;
+}
+
+// WHY narrative kept off Promise.allSettled: distinct LLM failure path we want
+// surfaced as `[narrative TICKER]` (qualitatively different from EDGAR errors).
+export async function maybeNarrative(
+  ticker: Ticker, transcripts: readonly Transcript[] | undefined, llm: LlmClient | null,
+): Promise<NarrativeShift | null> {
+  if (!llm || !transcripts || transcripts.length < 2) return null;
+  const [current, prior] = transcripts;
+  if (!current || !prior) return null;
+  try { return await extractNarrativeShift(current, prior, llm); }
+  catch (e) { console.warn(`[narrative ${ticker}] ${String(e)}`); return null; }
+}
