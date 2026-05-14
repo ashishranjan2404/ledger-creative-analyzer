@@ -68,7 +68,7 @@ export function fetchXbrlConcept(
 }
 
 async function doFetch(ticker: Ticker, tag: string, endpoint: string): Promise<XbrlPoint[]> {
-  const cik = await tickerToCik(ticker);
+  const cik = await tickerToCik(ticker, endpoint);
   const url = `${endpoint}/api/xbrl/companyconcept/CIK${cik}/us-gaap/${tag}.json`;
   const j = await fetchJson<ConceptResponse>(url, { headers: HEADERS });
   const rows = j.units?.USD ?? [];
