@@ -15,7 +15,15 @@ export async function fetchWithTimeout(
   // WHY: undici (Node fetch) transparently decodes gzip when the header is set,
   // saving ~70% on XBRL companyconcept payloads (~50KB JSON → ~15KB wire). No
   // caller-side decompression needed. Per-call headers in `init` override.
-  const headers = { 'accept-encoding': 'gzip, deflate', ...(init?.headers ?? {}) };
+  // user-agent: SEC EDGAR requires identifying UA; setting as default here means
+  // adapters that don't explicitly set one (Finnhub/Polygon/Benzinga/StockTwits/
+  // Yahoo) still pass good-citizenship UA. EDGAR adapters override with their
+  // specific UA format.
+  const headers = {
+    'accept-encoding': 'gzip, deflate',
+    'user-agent': 'Thedi-Personal/1.0 by ashish@platformy.org',
+    ...(init?.headers ?? {}),
+  };
   try {
     return await fetch(url, { ...init, headers, signal: ctl.signal });
   } catch (err) {
