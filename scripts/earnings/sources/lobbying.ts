@@ -1,6 +1,13 @@
-import { fetchJson } from '../_http.ts';
+import { fetchJsonWithRetry } from '../_http.ts';
 import { toTicker } from '../_watchlist.ts';
 import type { Ticker } from '../_types.ts';
+
+// WHY page_size=100: LDA's default is 25, which silently drops filings for
+// big clients (Microsoft / Alphabet have 30-60 filings per quarter once you
+// include all the lobbying firms they hire). 100 + follow-`next` covers the
+// long tail without burning anonymous quota on most clients.
+const PAGE_SIZE = 100;
+const MAX_PAGES = 5; // safety cap — 500 filings / quarter is the upper bound we'll honor
 
 // WHY: shape mirrors sources/quiver.ts:LobbyingRecord exactly so the deepdive
 // L8 renderer can swap this adapter in without code changes.
@@ -95,13 +102,14 @@ export async function fetchLobbying(
     if (!name) continue;
     for (const p of periods) {
       const qs = new URLSearchParams({
-        client_name: name, filing_year: String(p.year), filing_period: periodOfQuarter(p.quarter),
+        client_name: name, filing_year: String(p.year),
+        filing_period: periodOfQuarter(p.quarter),
+        page_size: String(PAGE_SIZE),
       });
       tasks.push({ t, year: p.year, quarter: p.quarter, url: `${endpoint}?${qs.toString()}` });
     }
   }
-  const settled = await Promise.allSettled(tasks.map((task) =>
-    fetchJson<unknown>(task.url, { headers: HEADERS })));
+  const settled = await Promise.allSettled(tasks.map((task) => fetchAllPages(task.url)));
   const out: LobbyingRecord[] = [];
   settled.forEach((r, i) => {
     const task = tasks[i]!;
@@ -109,11 +117,24 @@ export async function fetchLobbying(
       console.warn(`[lobbying] ${task.t}/${task.year}-Q${task.quarter}: ${String(r.reason)}`);
       return;
     }
-    const results = asArr(asObj(r.value)?.['results']);
-    for (const raw of results) {
+    for (const raw of r.value) {
       const rec = mapFiling(task.t, task.year, task.quarter, raw);
       if (rec) out.push(rec);
     }
   });
+  return out;
+}
+
+// Walks the `next` link up to MAX_PAGES times; flattens each page's `results`.
+async function fetchAllPages(initialUrl: string): Promise<unknown[]> {
+  const out: unknown[] = [];
+  let url: string | null = initialUrl;
+  for (let i = 0; i < MAX_PAGES && url; i++) {
+    const j = await fetchJsonWithRetry<unknown>(url, { headers: HEADERS });
+    const obj = asObj(j);
+    out.push(...asArr(obj?.['results']));
+    const next = obj?.['next'];
+    url = typeof next === 'string' && next.length > 0 ? next : null;
+  }
   return out;
 }
