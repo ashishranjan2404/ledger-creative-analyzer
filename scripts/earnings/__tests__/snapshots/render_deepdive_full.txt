@@ -1,0 +1,41 @@
+📈 Thedi Deep-Dive — 2026-05-14
+
+🏢 NVDA
+
+▌FUNDAMENTALS (8q sparklines)
+  Revenue YoY:    ▆█▆▃▂▂▁▁ ▼  +208% +265% +205% +122%  +94%  +77%  +52%  +49%
+  FCF margin:     ▇██▆▄▃▂▁ ▼    45%   48%   47%   44%   41%   39%   37%   35%
+  Net debt/EBITDA:█▆▃▃▁▁▁▁ ▼  -1.8x -1.9x -2.0x -2.0x -2.1x -2.1x -2.1x -2.1x
+
+▌NARRATIVE SHIFT (2026-01-31 → 2026-04-30)
+  • Strategic emphasis pivots from data-center buildout to sovereign-AI customer wins.
+  • Tone shifts from cautious about export controls to confident on diversified geography.
+  • New lexicon: "agentic workloads", "physical AI"; "crypto demand" dropped entirely.
+
+▌VALUATION
+             current    5yr med        sector
+  Fwd P/E: 31.0x      5yr med: 42.0x          sector: 28.0x
+  EV/EBITDA: 24.5x    5yr med: 32.0x          sector: 18.0x
+  FCF yield: 2.8%     5yr med: 1.9%           sector: 4.1%
+
+▌OPERATIONAL VELOCITY
+  Open eng roles:    1,820 (+12% vs 90d ago)
+  GitHub stars:      4,620 (+8% qoq)
+  Contributors:        217
+  L5 comp:           $412k (+9% YoY)
+
+▌SECULAR
+  arxiv mentions/90d:   184 (was 121)  ↑ accelerating
+  HN mentions/90d:       92 (was 104)  ↓ decelerating
+  Patents (180d): 47 grants
+    • Tensor core scheduling for sparse mixture-of-experts inference
+
+▌GOVERNMENT & CAPITAL
+  Congress: Pelosi, Nancy (D) Purchase $1,000,001 - $5,000,000 · 2026-05-10
+  Congress: Tuberville, Tommy (R) Sale $50,001 - $100,000 · 2026-05-05
+  Lobbying: $2.0M (Q1 2026)
+  Contract: $24.0M · DOE · 2026-05-12
+  Contract: $3.5M · NASA · 2026-04-22
+────────────────────────────────────────────────────────────────
+
+⚠️ Personal long-term tool. Sources: SEC EDGAR XBRL.

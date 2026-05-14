@@ -1,0 +1,11 @@
+📅 SCHEDULE — today + tomorrow (3)
+  NVDA · today AMC · EPS est $5.5 · Rev est $28.0B [finnhub]
+  AAPL · tmrw BMO · EPS est $2.1 · Rev est $95.5B [finnhub]
+  AMD · tmrw · EPS est n/a · Rev est n/a [yahoo]
+
+📰 NEWS — last 24h, watchlist
+  • [reuters]: "Apple cuts iPhone forecast amid soft demand" 3h
+  • [benzinga]: "NVIDIA inks new hyperscaler deal" 12h
+
+⚠️ FROTH CHECK (suppressed unless anomalous)
+  PLTR mentions +355% vs 30d baseline, uniformly bullish
