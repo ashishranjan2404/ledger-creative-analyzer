@@ -1,0 +1,15 @@
+{
+  "name": "earnings-scout",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal long-term investing scout — see docs/superpowers/specs/2026-05-08-thedi-earnings-scout-personal-design.md",
+  "scripts": {
+    "test": "node --test --experimental-strip-types __tests__/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.6.3"
+  }
+}
