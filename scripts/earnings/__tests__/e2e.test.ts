@@ -33,8 +33,12 @@ const REROUTE_HOSTS = new Set([
   // New tactical sources (keyless): all four sentiment fetchers now run by
   // default so the fixture must cover them or the e2e attempts real network.
   'apewisdom.io', 'api.pullpush.io', 'arctic-shift.photon-reddit.com',
-  // Quiver: only reached when QUIVER_API_KEY is set; included for completeness.
+  // Quiver: only reached when QUIVER_API_KEY is set (event_poll still gates on
+  // it); included for completeness.
   'api.quiverquant.com',
+  // L8 GOV free sources (deepdive, always-on after the Quiver→free swap):
+  // Senate/House stock-watcher GitHub mirrors, LDA filings API, USAspending awards.
+  'raw.githubusercontent.com', 'lda.senate.gov', 'api.usaspending.gov',
 ]);
 
 // Minimal-but-realistic fixtures. Each handler returns the *shape* that
@@ -113,6 +117,15 @@ const HANDLERS: Array<{ match: (u: URL) => boolean; h: Handler }> = [
   // Quiver historical endpoints (only reachable when QUIVER_API_KEY is set;
   // e2e leaves the key unset, so this is defensive coverage only).
   { match: (u) => u.pathname.startsWith('/beta/historical/'), h: () => ({ json: [] }) },
+  // L8 GOV free sources (deepdive, always-on):
+  // Senate/House stock-watcher GitHub mirrors — fetchJson expects an array.
+  { match: (u) => u.pathname.includes('-stock-watcher-data/'), h: () => ({ json: [] }) },
+  // LDA filings API — adapter reads `.results[]`.
+  { match: (u) => u.pathname.startsWith('/api/v1/filings'),
+    h: () => ({ json: { results: [] } }) },
+  // USAspending /search/spending_by_award/ — adapter reads `.results[]`.
+  { match: (u) => u.pathname.startsWith('/api/v2/search/spending_by_award'),
+    h: () => ({ json: { results: [] } }) },
 ];
 
 function dispatch(req: IncomingMessage, res: ServerResponse, body: string): void {
@@ -159,7 +172,10 @@ before(async () => {
   }) as typeof fetch;
   for (const [k, v] of Object.entries(ENV)) { savedEnv[k] = process.env[k]; process.env[k] = v; }
   // ANTHROPIC_API_KEY intentionally unset → narrative path skipped (V1).
-  // QUIVER_API_KEY intentionally unset → L8 gov section + congressional alert path skipped.
+  // QUIVER_API_KEY intentionally unset → event_poll's congressional alert
+  // path is skipped; deepdive's L8 now runs unconditionally against the
+  // free gov sources (Senate/House mirrors, LDA, USAspending) and the
+  // fixture returns empty for each → renderer suppresses the GOV block.
   delete process.env['ANTHROPIC_API_KEY'];
   delete process.env['QUIVER_API_KEY'];
   // Bypass the rate limiter: tactical now fans into PullPush/Arctic-Shift/Reddit-RSS,

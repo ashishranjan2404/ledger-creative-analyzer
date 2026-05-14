@@ -8,9 +8,9 @@ import {
 import { fetchOperationalSignal, type OperationalSignal } from './layers/operational.ts';
 import { fetchSecularSignal, type SecularSignal } from './layers/secular.ts';
 import { fetchRecentTranscripts, type Transcript } from './sources/transcripts.ts';
-import {
-  fetchCongressionalTrades, fetchLobbying, fetchGovContracts,
-} from './sources/quiver.ts';
+import { fetchCongressionalTrades } from './sources/congress_disclosure.ts';
+import { fetchLobbying } from './sources/lobbying.ts';
+import { fetchGovContracts } from './sources/gov_contracts.ts';
 import { renderDeepDiveText, renderDeepDiveSubject, type DeepDiveCard, type QuiverSignal } from './render_deepdive.ts';
 import { sendEmail } from './send.ts';
 import { insertRow } from './_butterbase.ts';
@@ -22,9 +22,9 @@ type EnvKey = typeof ENV_VARS[number];
 const FROM = 'thedi@platformy.org';
 const ROTATION_BUCKET = 4; // §8.2: surface 4 tickers/week, rotate by week-of-year.
 const TRANSCRIPT_LOOKBACK_DAYS = 180; // 2 quarters of 8-Ks ≥ enough for current+prior.
-const QUIVER_CONGRESS_SINCE_DAYS = 90;   // 1 quarter — long enough to catch infrequent congressional trades.
-const QUIVER_LOBBY_QUARTERS = 4;          // trailing 4 quarters keeps section relevant week-to-week.
-const QUIVER_CONTRACTS_SINCE_DAYS = 180;  // contract awards are sparse; 2 quarters surfaces meaningful flow.
+const GOV_CONGRESS_SINCE_DAYS = 90;   // 1 quarter — long enough to catch infrequent congressional trades.
+const GOV_LOBBY_QUARTERS = 4;          // trailing 4 quarters keeps section relevant week-to-week.
+const GOV_CONTRACTS_SINCE_DAYS = 180;  // contract awards are sparse; 2 quarters surfaces meaningful flow.
 
 // WHY aggregate-throw: matches tactical.readEnv — operator fixes all gaps in one
 // cron edit. ANTHROPIC_API_KEY stays OPTIONAL: missing key just disables L4.
@@ -85,22 +85,22 @@ async function maybeNarrative(
   catch (e) { console.warn(`[narrative ${ticker}] ${String(e)}`); return null; }
 }
 
-// L8 GOV: optional, gated on QUIVER_API_KEY. Internally each fetcher uses
-// Promise.allSettled per-ticker, so a single-ticker call returns [] on miss
-// without throwing. Caller passes null for `apiKey` to skip the section.
-async function maybeQuiver(ticker: Ticker, apiKey: string | null): Promise<QuiverSignal | null> {
-  if (!apiKey) return null;
+// L8 GOV: always-on. Each adapter pulls from a free, keyless gov source
+// (Senate/House stock-watcher GitHub mirrors, LDA, USAspending) and uses
+// Promise.allSettled internally per-ticker, so a single-ticker call returns
+// [] on miss without throwing. Empty in all 3 → null suppresses the block.
+async function maybeGovCapital(ticker: Ticker): Promise<QuiverSignal | null> {
   const [cR, lR, gR] = await Promise.allSettled([
-    fetchCongressionalTrades([ticker], QUIVER_CONGRESS_SINCE_DAYS, apiKey),
-    fetchLobbying([ticker], QUIVER_LOBBY_QUARTERS, apiKey),
-    fetchGovContracts([ticker], QUIVER_CONTRACTS_SINCE_DAYS, apiKey),
+    fetchCongressionalTrades([ticker], GOV_CONGRESS_SINCE_DAYS),
+    fetchLobbying([ticker], GOV_LOBBY_QUARTERS),
+    fetchGovContracts([ticker], GOV_CONTRACTS_SINCE_DAYS),
   ] as const);
   const congressional = cR.status === 'fulfilled' ? cR.value : [];
   const lobbying = lR.status === 'fulfilled' ? lR.value : [];
   const contracts = gR.status === 'fulfilled' ? gR.value : [];
-  if (cR.status === 'rejected') console.warn(`[quiver/congress ${ticker}] ${String(cR.reason)}`);
-  if (lR.status === 'rejected') console.warn(`[quiver/lobbying ${ticker}] ${String(lR.reason)}`);
-  if (gR.status === 'rejected') console.warn(`[quiver/contracts ${ticker}] ${String(gR.reason)}`);
+  if (cR.status === 'rejected') console.warn(`[gov/congress ${ticker}] ${String(cR.reason)}`);
+  if (lR.status === 'rejected') console.warn(`[gov/lobbying ${ticker}] ${String(lR.reason)}`);
+  if (gR.status === 'rejected') console.warn(`[gov/contracts ${ticker}] ${String(gR.reason)}`);
   if (congressional.length === 0 && lobbying.length === 0 && contracts.length === 0) return null;
   return { congressional, lobbying, contracts };
 }
@@ -109,7 +109,6 @@ async function maybeQuiver(ticker: Ticker, apiKey: string | null): Promise<Quive
 async function buildCard(
   ticker: Ticker, asOf: Date,
   transcriptsByTicker: ReadonlyMap<Ticker, readonly Transcript[]>, llm: LlmClient | null,
-  quiverKey: string | null,
 ): Promise<DeepDiveCard> {
   // V1 (spec §6 L5): price/shares feed deferred — NaN → renderer prints 'n/a'.
   const NAN = Number.NaN;
@@ -120,7 +119,7 @@ async function buildCard(
     fetchSecularSignal(ticker),
   ] as const);
   const narrative = await maybeNarrative(ticker, transcriptsByTicker.get(ticker), llm);
-  const quiver = await maybeQuiver(ticker, quiverKey);
+  const quiver = await maybeGovCapital(ticker);
   const card: DeepDiveCard = { ticker, asOf };
   if (fundR.status === 'fulfilled') card.fundamentals = fundR.value as FundamentalsTrajectory;
   else console.warn(`[fundamentals ${ticker}] ${String(fundR.reason)}`);
@@ -155,13 +154,12 @@ export async function runDeepDive(): Promise<{ sent: boolean; cards: number; ms:
     } catch (e) { console.warn(`[transcripts] ${String(e)} — narrative skipped this run`); }
   }
 
-  // L8 GOV: optional, identical gating shape to L4. Missing QUIVER_API_KEY → null
-  // → maybeQuiver returns null → renderer suppresses the ▌GOVERNMENT & CAPITAL block.
-  const quiverKey = process.env['QUIVER_API_KEY'] ?? null;
-
+  // L8 GOV: always attempted via free keyless sources. Empty across all 3
+  // adapters → maybeGovCapital returns null → renderer suppresses the
+  // ▌GOVERNMENT & CAPITAL block, same UX as the prior key-gated path.
   // Parallel per-ticker: 4 × ~6 EDGAR calls = 24 in flight, within SEC's 10/sec.
   const cards = await Promise.all(slate.map(
-    (t) => buildCard(t, today, transcriptsByTicker, llm, quiverKey),
+    (t) => buildCard(t, today, transcriptsByTicker, llm),
   ));
 
   const subject = renderDeepDiveSubject(today, cards.length);
