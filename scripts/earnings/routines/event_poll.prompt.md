@@ -42,7 +42,7 @@ Prints `{ alerts, newAlerts, ms }` to stdout on success — `alerts` is total al
 
 ## V1 limitations
 
-- **No 13F prior-quarter diff yet.** `runEventPoll` passes `[]` as `notableChanges` to `buildInstitutionalSignals`, so the consensus (≥2 funds accumulating) and big-new-position (>100k shares) rules can't fire. Only activist (13D/G) institutional alerts ship today. A future task will fetch the 90-day-prior snapshot and call `diffHoldings` so consensus alerts come online.
+- **13F amendment edge case.** `runEventPoll` fetches both the latest and prior-quarter 13F snapshots (`fetchNotableFund13F` + `fetchPriorFund13F`) and feeds `diffHoldings(current, prior)` into `buildInstitutionalSignals`, so consensus (≥2 funds accumulating), big-new-position (>100k shares), and activist (13D/G) rules all fire. Caveat: the prior snapshot is `items[1]` of the SEC Atom feed — a recent 13F-HR/A amendment can push the true prior quarter to `items[2]`, which we accept for V1 (rare, degrades to no-alert not false-alert). Loop 11 adds filing-form-type filtering + caching to cut prior-quarter traffic from per-poll to once/day.
 - Form 4 fetch window is the last 7 days per poll; the cluster-buy detector still applies its own 30-day rolling window inside that data.
 - L8 congressional alerts: notable-politician filter is OPEN in V1 — any House/Senate member trading a watchlist ticker triggers an alert. A future tightening (e.g. filter to leadership / committee chairs) lives in `event_poll.ts` once we have a signal-to-noise readout from the first month of alerts.
 - Alert union in `schema/earnings_alert_seen.AlertType` is extended with `'congressional'` for dedup-row separation from `'form4_cluster'`, `'13dg'`, `'notable_13f'`, `'8k_narrative'`.

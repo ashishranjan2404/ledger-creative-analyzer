@@ -1,7 +1,9 @@
 import { TICKERS } from './_watchlist.ts';
 import { assertPersonalRecipient } from './_recipient.ts';
 import { fetchRecentForm4 } from './sources/edgar_form4.ts';
-import { fetchNotableFund13F, fetchActivism } from './sources/edgar_13f.ts';
+import {
+  fetchNotableFund13F, fetchPriorFund13F, fetchActivism, diffHoldings,
+} from './sources/edgar_13f.ts';
 import { fetchCongressionalTrades, type CongressionalTrade } from './sources/congress_disclosure.ts';
 import { detectClusterBuys } from './layers/insider.ts';
 import {
@@ -55,9 +57,14 @@ export async function runEventPoll(): Promise<{ alerts: number; newAlerts: numbe
 
   // L8 congressional alerts run unconditionally — congress_disclosure.ts pulls
   // free public feeds (no API key), so the fan-out always includes a congress leg.
+  // WHY prior+current 13F as siblings (not chained): one failed leg degrades to
+  // empty-diff (no false alerts), and parallel settles keep total wall-time at
+  // max(current, prior) instead of current+prior.
+  const fundCiks = [...NOTABLE_FUNDS.keys()];
   const r = await settledByName({
     form4: fetchRecentForm4(TICKERS, FORM4_SINCE_DAYS),
-    notable13F: fetchNotableFund13F([...NOTABLE_FUNDS.keys()]),
+    notable13F: fetchNotableFund13F(fundCiks),
+    prior13F: fetchPriorFund13F(fundCiks),
     activism: fetchActivism(TICKERS, ACTIVISM_SINCE_DAYS),
     congress: fetchCongressionalTrades(TICKERS, CONGRESS_SINCE_DAYS),
   });
@@ -73,9 +80,13 @@ export async function runEventPoll(): Promise<{ alerts: number; newAlerts: numbe
     data: c,
   }));
 
-  // L3: institutional signals. V1: no prior-quarter snapshot, so notableChanges
-  // is [] — only activist (13D/G) alerts fire. V2 wires diffHoldings.
-  const signals = buildInstitutionalSignals([], r.activism ?? []);
+  // L3: institutional signals. Diff current vs prior-quarter 13F snapshots so
+  // consensus (≥2 funds accumulating) and big-new-position (>100k shares) rules
+  // can fire alongside activist (13D/G). If either snapshot leg failed (undefined),
+  // the diff degrades to empty — only activist alerts ship that poll, which is
+  // the desired failure mode (no-alert preferred over false-alert).
+  const changes = diffHoldings(r.notable13F ?? [], r.prior13F ?? []);
+  const signals = buildInstitutionalSignals(changes, r.activism ?? []);
   const instAlerts: Alert[] = signals.flatMap((s): Alert[] => {
     const reason = shouldAlertInstitutional(s);
     if (!reason) return [];

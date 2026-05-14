@@ -4,7 +4,7 @@ import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
 import {
-  CUSIP_TO_TICKER, diffHoldings, fetchActivism, fetchNotableFund13F,
+  CUSIP_TO_TICKER, diffHoldings, fetchActivism, fetchNotableFund13F, fetchPriorFund13F,
   type FundHolding,
 } from '../sources/edgar_13f.ts';
 import { _resetCikCache } from '../sources/edgar.ts';
@@ -119,6 +119,56 @@ test('error isolation: failed fund still returns others', async () => {
   const out = await fetchNotableFund13F(['0000000999', BERK_CIK], endpoint);
   assert.equal(out.length, 2);
   assert.ok(out.every((h) => h.fundCik === BERK_CIK));
+});
+
+test('fetchPriorFund13F returns [] when feed has only the latest filing', async () => {
+  // Default fixture has ONE entry in the Atom feed — items[1] is undefined, prior
+  // resolves to empty. This is the V1 cold-start case (e.g. fund's first 13F).
+  const prior = await fetchPriorFund13F([BERK_CIK], endpoint);
+  assert.deepEqual(prior, []);
+});
+
+test('fetchPriorFund13F extracts items[1] when feed has 2+ filings', async () => {
+  // Two entries in the feed: latest (Mar 2026, 900M AAPL shares) and prior (Dec 2025,
+  // 800M AAPL shares). Prior fetch should hit the older accession's infotable.
+  const PRIOR_ACC = '0001067983-25-000456';
+  const PRIOR_ACC_ND = PRIOR_ACC.replace(/-/g, '');
+  const priorIso = new Date(Date.now() - 95 * day).toISOString();
+  const multiFeedXml = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">
+    <entry><title>13F-HR</title>
+      <link href="https://x/Archives/edgar/data/${BERK_NO_PAD}/${ACC_ND}/${ACC}-index.htm"/>
+      <updated>${recentIso}</updated><summary>latest</summary></entry>
+    <entry><title>13F-HR</title>
+      <link href="https://x/Archives/edgar/data/${BERK_NO_PAD}/${PRIOR_ACC_ND}/${PRIOR_ACC}-index.htm"/>
+      <updated>${priorIso}</updated><summary>prior</summary></entry></feed>`;
+  const priorInfoTable = `<?xml version="1.0"?><informationTable>
+    <infoTable><nameOfIssuer>APPLE INC</nameOfIssuer><cusip>037833100</cusip>
+      <value>160000000000</value><shrsOrPrnAmt><sshPrnamt>800000000</sshPrnamt></shrsOrPrnAmt></infoTable>
+  </informationTable>`;
+  const priorPrimaryDoc = `<?xml version="1.0"?><edgarSubmission><filingManager>
+    <name>BERKSHIRE HATHAWAY INC</name></filingManager><periodOfReport>2025-12-31</periodOfReport></edgarSubmission>`;
+  routes.set(`feed:${BERK_CIK}:13F`, multiFeedXml);
+  routes.set(`/Archives/edgar/data/${BERK_NO_PAD}/${PRIOR_ACC_ND}/infotable.xml`, priorInfoTable);
+  routes.set(`/Archives/edgar/data/${BERK_NO_PAD}/${PRIOR_ACC_ND}/primary_doc.xml`, priorPrimaryDoc);
+
+  const [latest, prior] = await Promise.all([
+    fetchNotableFund13F([BERK_CIK], endpoint),
+    fetchPriorFund13F([BERK_CIK], endpoint),
+  ]);
+  // Latest still resolves to items[0] (Mar 2026, 900M shares).
+  assert.equal(latest.find((h) => h.ticker === 'AAPL')!.shares, 900000000);
+  // Prior resolves to items[1] (Dec 2025, 800M shares).
+  assert.equal(prior.length, 1);
+  assert.equal(prior[0]!.ticker, 'AAPL');
+  assert.equal(prior[0]!.shares, 800000000);
+  assert.equal(prior[0]!.accessionNumber, PRIOR_ACC);
+  assert.equal(prior[0]!.periodOfReport.toISOString().slice(0, 10), '2025-12-31');
+
+  // End-to-end: diffHoldings(current, prior) detects the 100M-share increase.
+  const changes = diffHoldings(latest, prior);
+  const aaplChange = changes.find((c) => c.ticker === 'AAPL')!;
+  assert.equal(aaplChange.changeType, 'increased');
+  assert.equal(aaplChange.shareDelta, 100000000);
 });
 
 test('diffHoldings classifies new/exit/increased/decreased and skips no-change', () => {

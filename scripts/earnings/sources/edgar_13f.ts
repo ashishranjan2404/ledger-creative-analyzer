@@ -52,19 +52,26 @@ function parseHoldings(xml: string): { cusip: string; value: number; shares: num
   return out;
 }
 
-async function fundHoldings(fundCik: string, endpoint: string): Promise<FundHolding[]> {
+// WHY quarterOffset: SEC Atom feed for 13F is reverse-chronological — items[0] is the
+// latest filing, items[1] is the prior quarter. Both 13F-HR and 13F-HR/A appear under
+// the same `type=13F` query, so a recent amendment can push the true "prior quarter"
+// to items[2]; for V1 we accept this — amendments are rare and a missed diff degrades
+// to no-alert (vs false-alert). Loop 11 will add filing-form-type filtering + caching.
+async function fundHoldings(
+  fundCik: string, endpoint: string, quarterOffset: number = 0,
+): Promise<FundHolding[]> {
   const padded = fundCik.padStart(10, '0');
   const items = await fetchRss(feedUrl(endpoint, padded, '13F'), { headers: HEADERS });
-  const latest = items[0]; if (!latest) return [];
+  const target = items[quarterOffset]; if (!target) return [];
   // WHY: SEC Atom <link> points at -index.htm (HTML wrapper); the raw XML lives at the
   // CDN path constructed from accession number (404s otherwise).
-  const accession = latest.link.match(ACCESSION_RE)?.[1]; if (!accession) return [];
+  const accession = target.link.match(ACCESSION_RE)?.[1]; if (!accession) return [];
   const dir = `${endpoint}/Archives/edgar/data/${parseInt(padded, 10)}/${accession.replace(/-/g, '')}`;
   const xml = await fetchXml(`${dir}/infotable.xml`) ?? await fetchXml(`${dir}/informationtable.xml`);
   const header = await fetchXml(`${dir}/primary_doc.xml`);
   const fundName = header ? (tag(header, 'name') ?? tag(header, 'filingManager') ?? '') : '';
   const periodRaw = header ? new Date(tag(header, 'periodOfReport') ?? '') : new Date(NaN);
-  const filingDate = latest.pubDate ?? new Date();
+  const filingDate = target.pubDate ?? new Date();
   const periodOfReport = isNaN(periodRaw.getTime()) ? filingDate : periodRaw;
   if (!xml) return [];
   return parseHoldings(xml).flatMap((h) => {
@@ -86,6 +93,13 @@ async function settle<T>(label: string, ids: readonly string[], work: (id: strin
 
 export const fetchNotableFund13F = (fundCiks: readonly string[], endpoint: string = DEFAULT_BASE):
   Promise<FundHolding[]> => settle('[13f]', fundCiks, (c) => fundHoldings(c, endpoint));
+
+// WHY separate-fn-not-flag: callers always want BOTH quarters in parallel (diff cannot
+// be computed otherwise), and Promise.all on two named fan-out keys is cleaner than
+// a single fn that branches on offset. Per-poll cost = 2x 13F traffic; acceptable
+// for the 8-fund watchlist (Loop 11 adds caching to drop prior-quarter to one daily fetch).
+export const fetchPriorFund13F = (fundCiks: readonly string[], endpoint: string = DEFAULT_BASE):
+  Promise<FundHolding[]> => settle('[13f-prior]', fundCiks, (c) => fundHoldings(c, endpoint, 1));
 
 async function activismFor(ticker: Ticker, cutoffMs: number, endpoint: string): Promise<FundActivism[]> {
   const cik = await tickerToCik(ticker, endpoint);
