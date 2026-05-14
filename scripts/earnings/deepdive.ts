@@ -115,22 +115,31 @@ export async function runDeepDive(): Promise<{ sent: boolean; cards: number; ms:
   // FINNHUB_KEY: OPTIONAL — mirrors ANTHROPIC_API_KEY gating. Absent ⇒ L5 `current` = n/a.
   const finnhubKey = process.env['FINNHUB_KEY'] ?? null;
   let transcriptsByTicker: ReadonlyMap<Ticker, readonly Transcript[]> = new Map();
+  // Phase timings — surfaced via audit_log.note so operator can spot a slow phase
+  // without digging into per-call latency. Granularity is intentionally coarse:
+  // 3 numbers track which third of the run owns the wall-clock.
+  let transcriptsMs = 0;
   if (llm) {
+    const t0 = Date.now();
     try {
       const all = await fetchRecentTranscripts(slate, TRANSCRIPT_LOOKBACK_DAYS);
       transcriptsByTicker = groupTranscriptsByTicker(all);
     } catch (e) { console.warn(`[transcripts] ${String(e)} — narrative skipped this run`); }
+    transcriptsMs = Date.now() - t0;
   }
 
   // Parallel per-ticker: 4 × ~6 EDGAR calls = 24 in flight, within SEC's 10/sec.
   const bb: ButterbaseConfig = { serviceKey: env.BUTTERBASE_SERVICE_KEY };
+  const tCards = Date.now();
   const cards = await Promise.all(slate.map((t) => buildCard(t, today, transcriptsByTicker, llm, finnhubKey, bb)));
+  const cardsMs = Date.now() - tCards;
 
   const subject = renderDeepDiveSubject(today, cards.length);
   const text = renderDeepDiveText(cards, today);
 
   let sent = false;
   let emailNote: string | null = null;
+  const tSend = Date.now();
   try {
     await sendEmail({ apiKey: env.RESEND_KEY, from: FROM_ADDRESS, to: env.RECIPIENT, subject, text });
     sent = true;
@@ -138,14 +147,18 @@ export async function runDeepDive(): Promise<{ sent: boolean; cards: number; ms:
     emailNote = `email failed: ${e instanceof Error ? e.message : String(e)}`;
     console.warn(`[send] ${emailNote}`);
   }
+  const sendMs = Date.now() - tSend;
 
   const ms = Date.now() - start;
+  const phaseNote = `phases: transcripts=${transcriptsMs}ms cards=${cardsMs}ms send=${sendMs}ms`;
   // audit_log regardless: a Resend outage MUST NOT silently drop the run; the
   // ok=false + note row makes the failure reason visible on next read.
   try {
     await insertRow('audit_log', {
       step: 'deepdive_run', ok: sent, ms, findings_count: cards.length,
-      note: emailNote ?? `sent ${cards.length} deep-dive card(s) to ${env.RECIPIENT}`,
+      note: emailNote
+        ? `${emailNote} | ${phaseNote}`
+        : `sent ${cards.length} deep-dive card(s) to ${env.RECIPIENT} | ${phaseNote}`,
     }, { serviceKey: env.BUTTERBASE_SERVICE_KEY });
   } catch (e) { console.warn(`[butterbase audit] ${String(e)}`); }
 
