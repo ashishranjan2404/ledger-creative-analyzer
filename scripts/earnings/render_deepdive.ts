@@ -3,11 +3,15 @@ import type { ValuationContext, ValuationMetric } from './layers/valuation.ts';
 import type { NarrativeShift } from './layers/narrative.ts';
 import type { OperationalSignal } from './layers/operational.ts';
 import type { SecularSignal, SecularTrend } from './layers/secular.ts';
-import type { CongressionalTrade, LobbyingRecord, GovContract } from './sources/quiver.ts';
+import type { CongressionalTrade } from './sources/congress_disclosure.ts';
+import type { LobbyingRecord } from './sources/lobbying.ts';
+import type { GovContract } from './sources/gov_contracts.ts';
 import type { Ticker } from './_types.ts';
 import { sparkline } from './_sparkline.ts';
 
-export type QuiverSignal = {
+// L8 GOV: data now sourced from free public feeds (Loops 1-2 swap). Type name
+// reflects the section's intent rather than the original Quiver adapter.
+export type GovCapitalSignal = {
   congressional: CongressionalTrade[];
   lobbying: LobbyingRecord[];
   contracts: GovContract[];
@@ -21,7 +25,7 @@ export type DeepDiveCard = {
   narrative?: NarrativeShift;
   operational?: OperationalSignal;
   secular?: SecularSignal;
-  quiver?: QuiverSignal;
+  govCapital?: GovCapitalSignal;
 };
 
 const ymd = (d: Date): string => d.toISOString().slice(0, 10);
@@ -123,7 +127,7 @@ function fmtDollars(n: number): string {
   if (Math.abs(n) >= 1e3) return `$${(n / 1e3).toFixed(0)}k`;
   return `$${Math.round(n)}`;
 }
-function quiverRows(q: QuiverSignal | undefined): string[] | null {
+function govCapitalRows(q: GovCapitalSignal | undefined): string[] | null {
   if (!q) return null;
   const { congressional, lobbying, contracts } = q;
   if (congressional.length === 0 && lobbying.length === 0 && contracts.length === 0) return null;
@@ -169,7 +173,7 @@ export function renderDeepDiveCard(c: DeepDiveCard): string {
     ['▌VALUATION', valRows],
     ['▌OPERATIONAL VELOCITY', operationalRows(c.operational)],
     ['▌SECULAR', secularRows(c.secular)],
-    ['▌GOVERNMENT & CAPITAL', quiverRows(c.quiver)],
+    ['▌GOVERNMENT & CAPITAL', govCapitalRows(c.govCapital)],
   ];
   const body = sections.filter((s): s is [string, string[]] => s[1] !== null)
     .map(([h, rs]) => [h, ...rs].join('\n')).join('\n\n');

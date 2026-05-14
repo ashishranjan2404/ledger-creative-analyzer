@@ -11,7 +11,7 @@ import { fetchRecentTranscripts, type Transcript } from './sources/transcripts.t
 import { fetchCongressionalTrades } from './sources/congress_disclosure.ts';
 import { fetchLobbying } from './sources/lobbying.ts';
 import { fetchGovContracts } from './sources/gov_contracts.ts';
-import { renderDeepDiveText, renderDeepDiveSubject, type DeepDiveCard, type QuiverSignal } from './render_deepdive.ts';
+import { renderDeepDiveText, renderDeepDiveSubject, type DeepDiveCard, type GovCapitalSignal } from './render_deepdive.ts';
 import { sendEmail } from './send.ts';
 import { insertRow } from './_butterbase.ts';
 import type { Ticker } from './_types.ts';
@@ -57,7 +57,7 @@ export function rotateCards<T>(cards: readonly T[], date: Date, bucket = ROTATIO
 
 // L4 helpers (buildLlmClientOrNull/groupTranscriptsByTicker/maybeNarrative) live in layers/narrative.ts.
 // L8 GOV: always-on, keyless. Per-ticker fan-out via Promise.allSettled — empty in all 3 → null.
-async function maybeGovCapital(ticker: Ticker): Promise<QuiverSignal | null> {
+async function maybeGovCapital(ticker: Ticker): Promise<GovCapitalSignal | null> {
   const [cR, lR, gR] = await Promise.allSettled([
     fetchCongressionalTrades([ticker], GOV_CONGRESS_SINCE_DAYS),
     fetchLobbying([ticker], GOV_LOBBY_QUARTERS),
@@ -86,7 +86,7 @@ async function buildCard(
     fetchSecularSignal(ticker),
   ] as const);
   const narrative = await maybeNarrative(ticker, transcriptsByTicker.get(ticker), llm);
-  const quiver = await maybeGovCapital(ticker);
+  const govCapital = await maybeGovCapital(ticker);
   const card: DeepDiveCard = { ticker, asOf };
   if (fundR.status === 'fulfilled') card.fundamentals = fundR.value as FundamentalsTrajectory;
   else console.warn(`[fundamentals ${ticker}] ${String(fundR.reason)}`);
@@ -97,7 +97,7 @@ async function buildCard(
   if (secR.status === 'fulfilled') card.secular = secR.value as SecularSignal;
   else console.warn(`[secular ${ticker}] ${String(secR.reason)}`);
   if (narrative) card.narrative = narrative;
-  if (quiver) card.quiver = quiver;
+  if (govCapital) card.govCapital = govCapital;
   return card;
 }
 

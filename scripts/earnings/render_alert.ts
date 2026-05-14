@@ -3,7 +3,7 @@
 import type { Ticker } from './_types.ts';
 import type { ClusterBuy } from './layers/insider.ts';
 import type { InstitutionalSignal } from './layers/institutional.ts';
-import type { CongressionalTrade } from './sources/quiver.ts';
+import type { CongressionalTrade } from './sources/congress_disclosure.ts';
 import { wasSeen, markSeen, type AlertType } from './schema/earnings_alert_seen.ts';
 
 export type Alert =
