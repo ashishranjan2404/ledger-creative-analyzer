@@ -100,6 +100,83 @@ test('rotateCards: different weeks select different slots', () => {
   assert.notDeepEqual(w1, w2);
 });
 
+// === Loop 41: property-based tests for rotateCards =========================
+// Use seeded deterministic inputs (no fast-check dep). Verifies invariants
+// across input size, bucket, and date space.
+
+function seededRng(seed: number): () => number {
+  // Tiny LCG — deterministic across runs for the same seed.
+  let s = seed;
+  return () => {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return ((s >>> 0) / 0x100000000);
+  };
+}
+
+test('rotateCards property: output length === min(bucket, cards.length) for every (N, bucket, date)', () => {
+  const rng = seededRng(0xc0ffee);
+  for (let i = 0; i < 60; i++) {
+    const n = 1 + Math.floor(rng() * 40);   // 1..40 cards
+    const bucket = 1 + Math.floor(rng() * 10); // 1..10 bucket
+    const ts = Date.UTC(2026, 0, 1) + Math.floor(rng() * 365) * 86_400_000;
+    const cards = Array.from({ length: n }, (_, k) => `t${k}`);
+    const out = rotateCards(cards, new Date(ts), bucket);
+    assert.equal(out.length, Math.min(bucket, n),
+      `(n=${n}, bucket=${bucket}, ts=${new Date(ts).toISOString()}) → out.length=${out.length}`);
+  }
+});
+
+test('rotateCards property: same (date, bucket) → bit-identical output (deterministic, no random)', () => {
+  const rng = seededRng(42);
+  for (let i = 0; i < 30; i++) {
+    const n = 5 + Math.floor(rng() * 30);
+    const bucket = 1 + Math.floor(rng() * 8);
+    const ts = Date.UTC(2024, 5, 1) + Math.floor(rng() * 800) * 86_400_000;
+    const cards = Array.from({ length: n }, (_, k) => `x${k}`);
+    const a = rotateCards(cards, new Date(ts), bucket);
+    const b = rotateCards(cards, new Date(ts), bucket);
+    assert.deepEqual(a, b, `non-determinism at (n=${n}, bucket=${bucket})`);
+  }
+});
+
+test('rotateCards property: every element surfaces within ceil(N/bucket) consecutive weeks', () => {
+  // Invariant: rotating week-by-week through ceil(N/bucket) weeks must cover all N elements.
+  const rng = seededRng(0xdeadbeef);
+  for (let i = 0; i < 20; i++) {
+    const n = 5 + Math.floor(rng() * 20);
+    const bucket = 1 + Math.floor(rng() * 6);
+    if (bucket >= n) continue; // trivially all-surfacing
+    const cards = Array.from({ length: n }, (_, k) => `e${k}`);
+    const groups = Math.ceil(n / bucket);
+    const seen = new Set<string>();
+    // Walk ISO weeks across an entire year offset by seed — covers all cycles.
+    const startTs = Date.UTC(2026, 0, 5);
+    for (let w = 0; w < groups; w++) {
+      const day = new Date(startTs + w * 7 * 86_400_000);
+      for (const x of rotateCards(cards, day, bucket)) seen.add(x);
+    }
+    assert.equal(seen.size, n, `(n=${n}, bucket=${bucket}, groups=${groups}) only saw ${seen.size}/${n}`);
+  }
+});
+
+test('rotateCards property: output is always a contiguous-or-wrapping subsequence of input', () => {
+  // Slice + (optional) wrap from the start. Equivalently: if you concat the
+  // output to itself and search, you should find a contiguous window in
+  // (cards+cards) for any valid (date, bucket).
+  const rng = seededRng(7);
+  for (let i = 0; i < 30; i++) {
+    const n = 4 + Math.floor(rng() * 16);
+    const bucket = 1 + Math.floor(rng() * Math.min(n, 8));
+    const ts = Date.UTC(2025, 0, 1) + Math.floor(rng() * 365) * 86_400_000;
+    const cards = Array.from({ length: n }, (_, k) => `c${k}`);
+    const out = rotateCards(cards, new Date(ts), bucket);
+    const doubled = [...cards, ...cards].join(',');
+    const needle = out.join(',');
+    assert.ok(doubled.includes(needle),
+      `not contiguous-or-wrapping: out=${needle}  in  doubled=${doubled}`);
+  }
+});
+
 test('weekOfYear: anchors to ISO 8601 week numbers for known dates', () => {
   // 2026-01-01 is a Thursday → ISO week 1 of 2026.
   assert.equal(weekOfYear(new Date('2026-01-01T12:00:00Z')), 1);
