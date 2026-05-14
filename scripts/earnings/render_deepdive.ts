@@ -55,14 +55,27 @@ function fmtSignedPct(v: number): string {
   return `${r >= 0 ? '+' : ''}${r}%`;
 }
 
+// WHY: marker compares latest (values[7]) to 4q-prior (values[3]) — true
+// year-over-year direction, not the 2nd-derivative of a rate. NaN on either
+// side yields '·' so missing-data rows don't claim a spurious trend.
+function yoyMarker(values: readonly number[]): string {
+  const last = values.at(-1);
+  const prior = values.length >= 5 ? values[values.length - 5] : undefined;
+  if (last === undefined || prior === undefined) return '·';
+  if (!Number.isFinite(last) || !Number.isFinite(prior)) return '·';
+  if (last > prior) return '▲';
+  if (last < prior) return '▼';
+  return '·';
+}
 function fundLine(m: FundamentalsMetric): string {
   const label = `${m.label}:`.padEnd(PAD_LABEL);
   const bar = sparkline(m.values).padEnd(8);
+  const yoy = yoyMarker(m.values);
   const signed = m.label === 'Revenue YoY';
   const cells = m.values.map((v) =>
     (signed && m.unit === 'pct' ? fmtSignedPct(v) : fmtFund(v, m.unit)).padStart(5),
   ).join(' ');
-  return `  ${label}${bar}  ${cells}`;
+  return `  ${label}${bar} ${yoy}  ${cells}`;
 }
 
 function valLine(m: ValuationMetric, medianLabel: string): string {
