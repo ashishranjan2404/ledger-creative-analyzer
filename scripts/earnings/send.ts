@@ -14,6 +14,10 @@ export type SendResult = { id: string };
 
 const DEFAULT_ENDPOINT = 'https://api.resend.com/emails';
 
+// Shared sender address (DKIM-verified for platformy.org). Loop 14: lifted out of
+// each routine's per-file const so a future domain swap is one-place.
+export const FROM_ADDRESS = 'thedi@platformy.org';
+
 export async function sendEmail(args: SendArgs): Promise<SendResult> {
   assertPersonalRecipient(args.to);
   const endpoint = args.endpoint ?? DEFAULT_ENDPOINT;

@@ -13,7 +13,7 @@ import { fetchCongressionalTrades } from './sources/congress_disclosure.ts';
 import { fetchLobbying } from './sources/lobbying.ts';
 import { fetchGovContracts } from './sources/gov_contracts.ts';
 import { renderDeepDiveText, renderDeepDiveSubject, type DeepDiveCard, type GovCapitalSignal } from './render_deepdive.ts';
-import { sendEmail } from './send.ts';
+import { sendEmail, FROM_ADDRESS } from './send.ts';
 import { insertRow, type ButterbaseConfig } from './_butterbase.ts';
 import { readRequiredEnv } from './_env.ts';
 import type { Ticker } from './_types.ts';
@@ -21,7 +21,6 @@ import type { Ticker } from './_types.ts';
 export const ENV_VARS = ['RESEND_KEY', 'BUTTERBASE_SERVICE_KEY', 'RECIPIENT'] as const;
 type EnvKey = typeof ENV_VARS[number];
 
-const FROM = 'thedi@platformy.org';
 const ROTATION_BUCKET = 4; // §8.2: surface 4 tickers/week, rotate by week-of-year.
 const TRANSCRIPT_LOOKBACK_DAYS = 180; // 2 quarters of 8-Ks ≥ enough for current+prior.
 const GOV_CONGRESS_SINCE_DAYS = 90;   // 1 quarter — long enough to catch infrequent congressional trades.
@@ -133,7 +132,7 @@ export async function runDeepDive(): Promise<{ sent: boolean; cards: number; ms:
   let sent = false;
   let emailNote: string | null = null;
   try {
-    await sendEmail({ apiKey: env.RESEND_KEY, from: FROM, to: env.RECIPIENT, subject, text });
+    await sendEmail({ apiKey: env.RESEND_KEY, from: FROM_ADDRESS, to: env.RECIPIENT, subject, text });
     sent = true;
   } catch (e) {
     emailNote = `email failed: ${e instanceof Error ? e.message : String(e)}`;

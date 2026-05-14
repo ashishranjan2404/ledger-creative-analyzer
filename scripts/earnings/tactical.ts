@@ -12,7 +12,7 @@ import { fetchArcticShiftMentions } from './sources/arcticshift.ts';
 import { fetchRedditRssMentions } from './sources/reddit_rss.ts';
 import { detectFroth } from './froth.ts';
 import { renderTacticalText, renderTacticalSubject, type TacticalDigest } from './render_tactical.ts';
-import { sendEmail } from './send.ts';
+import { sendEmail, FROM_ADDRESS } from './send.ts';
 import { insertRow, insertRows } from './_butterbase.ts';
 import { readRequiredEnv, readOptionalEnv } from './_env.ts';
 import type { EarningsEvent, RawItem, Finding, Ticker } from './_types.ts';
@@ -27,7 +27,6 @@ type OptionalEnvKey = typeof OPTIONAL_ENV_VARS[number];
 type Env = Record<EnvKey, string> & Partial<Record<OptionalEnvKey, string>>;
 
 const SUBS = ['wallstreetbets', 'stocks', 'investing', 'SecurityAnalysis'] as const;
-const FROM = 'thedi@platformy.org';
 
 // Aggregate-throw + optional-merge. Shared helpers in _env.ts; see WHY there.
 export function readEnv(env: NodeJS.ProcessEnv = process.env): Env {
@@ -128,7 +127,7 @@ export async function runTactical(): Promise<{ sent: boolean; findings: number; 
   let sent = false;
   let emailNote: string | null = null;
   try {
-    await sendEmail({ apiKey: env.RESEND_KEY, from: FROM, to: env.RECIPIENT,
+    await sendEmail({ apiKey: env.RESEND_KEY, from: FROM_ADDRESS, to: env.RECIPIENT,
       subject: renderTacticalSubject(digest), text: renderTacticalText(digest) });
     sent = true;
   } catch (e) {

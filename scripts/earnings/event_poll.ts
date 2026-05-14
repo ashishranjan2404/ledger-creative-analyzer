@@ -12,7 +12,7 @@ import {
 import {
   filterAndMarkUnseen, renderAlertSubject, renderAlertBody, type Alert,
 } from './render_alert.ts';
-import { sendEmail } from './send.ts';
+import { sendEmail, FROM_ADDRESS } from './send.ts';
 import { insertRow } from './_butterbase.ts';
 import { readRequiredEnv } from './_env.ts';
 import type { Ticker } from './_types.ts';
@@ -20,7 +20,6 @@ import type { Ticker } from './_types.ts';
 export const ENV_VARS = ['RESEND_KEY', 'BUTTERBASE_SERVICE_KEY', 'RECIPIENT'] as const;
 type EnvKey = typeof ENV_VARS[number];
 
-const FROM = 'thedi@platformy.org';
 const FORM4_SINCE_DAYS = 7;     // hourly cron easily covers cluster-buy 30d window via accumulation
 const ACTIVISM_SINCE_DAYS = 30; // 13D/G filings stay relevant for ~30 days
 const CONGRESS_SINCE_DAYS = 7;  // reporting lag is up to 45d but most appear within a week of trade.
@@ -117,7 +116,7 @@ export async function runEventPoll(): Promise<{ alerts: number; newAlerts: numbe
   for (const a of unseen) {
     try {
       await sendEmail({
-        apiKey: env.RESEND_KEY, from: FROM, to: env.RECIPIENT,
+        apiKey: env.RESEND_KEY, from: FROM_ADDRESS, to: env.RECIPIENT,
         subject: renderAlertSubject(a), text: renderAlertBody(a),
       });
       sentCount += 1;
