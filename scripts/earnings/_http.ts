@@ -38,6 +38,58 @@ export async function fetchJson<T>(
   return (await res.json()) as T;
 }
 
+export type RetryOpts = {
+  maxRetries?: number;        // default 3 (so up to 4 attempts total)
+  initialDelayMs?: number;    // default 500
+  timeoutMs?: number;
+};
+
+// WHY: free tiers of Finnhub/Polygon/Benzinga + SEC EDGAR all return 429 under
+// burst load; without backoff a single rate-spike kills the whole run. Honors
+// Retry-After when present (seconds or HTTP-date), else exponential backoff
+// (500ms, 1s, 2s, 4s …). 5xx is also retried (transient origin errors). 4xx
+// other than 429 is treated as a hard error — the caller's input is wrong.
+export async function fetchJsonWithRetry<T>(
+  url: string,
+  init?: RequestInit,
+  opts: RetryOpts = {},
+): Promise<T> {
+  const maxRetries = opts.maxRetries ?? 3;
+  const baseDelay = opts.initialDelayMs ?? 500;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetchWithTimeout(url, init, opts.timeoutMs);
+      if (res.ok) return (await res.json()) as T;
+      const retriable = res.status === 429 || res.status >= 500;
+      if (!retriable || attempt === maxRetries) {
+        throw new Error(`HTTP ${res.status} ${res.statusText}: ${url}`);
+      }
+      const ra = retryAfterMs(res.headers.get('retry-after'));
+      const delay = ra ?? baseDelay * 2 ** attempt;
+      await sleep(delay);
+      continue;
+    } catch (e) {
+      lastErr = e;
+      if (attempt === maxRetries) throw e;
+      // Network-level errors (DNS, ECONNRESET, etc.) — also retried with backoff.
+      await sleep(baseDelay * 2 ** attempt);
+    }
+  }
+  throw lastErr ?? new Error(`unreachable: fetchJsonWithRetry exhausted retries for ${url}`);
+}
+
+function retryAfterMs(header: string | null): number | null {
+  if (!header) return null;
+  const n = Number(header);
+  if (Number.isFinite(n) && n >= 0) return Math.min(n * 1000, 30_000);
+  const dateMs = new Date(header).getTime();
+  if (Number.isFinite(dateMs)) return Math.min(Math.max(0, dateMs - Date.now()), 30_000);
+  return null;
+}
+
+function sleep(ms: number): Promise<void> { return new Promise((r) => setTimeout(r, ms)); }
+
 export async function fetchRss(
   url: string,
   init?: RequestInit,

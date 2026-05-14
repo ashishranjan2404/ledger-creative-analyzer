@@ -1,4 +1,4 @@
-import { fetchJson } from '../_http.ts';
+import { fetchJsonWithRetry } from '../_http.ts';
 import type { EarningsEvent, Ticker } from '../_types.ts';
 import { toTicker } from '../_watchlist.ts';
 
@@ -68,8 +68,8 @@ export async function fetchQuoteAndShares(
   // Parallel: half the wall-clock vs sequential; either failure → null (graceful).
   try {
     const [q, p] = await Promise.all([
-      fetchJson<QuoteResp>(`${endpoint}/quote?symbol=${sym}&token=${tk}`),
-      fetchJson<Profile2Resp>(`${endpoint}/stock/profile2?symbol=${sym}&token=${tk}`),
+      fetchJsonWithRetry<QuoteResp>(`${endpoint}/quote?symbol=${sym}&token=${tk}`),
+      fetchJsonWithRetry<Profile2Resp>(`${endpoint}/stock/profile2?symbol=${sym}&token=${tk}`),
     ]);
     const price = typeof q.c === 'number' ? q.c : NaN;
     const sharesMm = typeof p.shareOutstanding === 'number' ? p.shareOutstanding : NaN;
@@ -93,7 +93,7 @@ export async function fetchFinnhubEarnings(
   const to = ymd(dateTo);
   const settled = await Promise.allSettled(
     tickers.map(async (t) => {
-      const data = await fetchJson<FinnhubResp>(buildUrl(endpoint, t, from, to, apiKey));
+      const data = await fetchJsonWithRetry<FinnhubResp>(buildUrl(endpoint, t, from, to, apiKey));
       return (data.earningsCalendar ?? []).map(toEvent);
     }),
   );
