@@ -121,3 +121,57 @@ Each row appended after loop completion.
 - Run full test suite: `cd scripts/earnings && npx tsc --noEmit && node --test --experimental-strip-types __tests__/*.test.ts`
 - Decide deploy strategy: push to GitHub + `/schedule`, OR run from local cron
 - For `/schedule`: paste `routines/tactical.prompt.md`, `routines/deepdive.prompt.md`, `routines/event_poll.prompt.md`
+
+---
+
+## ✅ Run complete (2026-05-14)
+
+**All 50 loops dispatched, 40 commits on `feat/earnings-improvements` (off `feat/spec-lesson`).** Branch is ahead of the earnings baseline by 40 commits.
+
+**Final state:**
+- **Tests:** 380/380 pass (up from 300 baseline → +80 new tests)
+- **tsc:** clean
+- **No halts** (≤5 consecutive failures threshold never crossed)
+- **Descoped (intentional, with rationale):** Loops 38 (congress leadership filter), 39 (SEC enforcement), 48-49 (dup integration tests). 46 loops produced code/test deliveries; 4 produced docs-only commits.
+
+**Headline improvements (by tier):**
+
+| Tier | Output |
+|---|---|
+| A: Open follow-ups (1-15) | Quiver→free swap (deepdive + event_poll), 13F prior-quarter diff, 2 CIK fixes, L5 price+shares wired, L1 cache via earnings_snapshot, shared _env/_email/_parsing helpers, deepdive 193→155 lines |
+| B: Source hardening (16-30) | fetchJsonWithRetry with HardHttpError separation, circuit breaker for Yahoo/StockTwits/ApeWisdom, LDA + USAspending pagination, gzip default, UA audit, congress fallback URLs |
+| C: Layer enhancements (31-37) | L1 YoY ▲/▼ markers, 4 new NOTABLE_FUNDS (Tiger/Lone Pine/Capital Research/T. Rowe), L5 P/B + EV/Sales + fwdEPS YoY, USPTO patent grants in L7 |
+| D: Observability + test (40-50) | Phase latency in audit notes, property tests for rotateCards + detectFroth, render snapshot tests, parseGoodDate + parseAmount fuzz, 10-test regression suite for the 8 original bugs |
+
+**New files:**
+- Source: `_env.ts`, `_parsing.ts`, `_snapshot_cache.ts`, `sources/uspto.ts`
+- Tests: 7 new test files including snapshot helpers + 5 .txt fixtures
+
+**Notable architectural changes:**
+- HTTP layer gained retry (`fetchJsonWithRetry`), circuit breaker, gzip, default UA — Centralized in `_http.ts`. HardHttpError class distinguishes intentional 4xx-non-429 throws from retryable network errors.
+- Butterbase: reads retry (idempotent), writes don't (dup risk on audit_log).
+- All adapters that hit external APIs now have at least one of: retry, breaker, or both.
+- Renderer's `GovCapitalSignal` type now lives at the natural intent layer (not the dormant Quiver adapter).
+
+**Routine prompt md files** are updated to reflect:
+- Optional `FINNHUB_KEY` for L5 current values
+- L8 keyless always-on (no QUIVER_API_KEY)
+- 13F amendment edge case caveat (Loop 5)
+- Notable-politician filter rationale (Loop 38)
+
+**Routines NOT yet deployed via `/schedule`** — that's a user-triggered step. All `routines/*.prompt.md` ready to paste; env vars documented in main wiki.
+
+**Operator's next moves:**
+1. Review the `feat/earnings-improvements` branch + merge to whatever target (main or feat/spec-lesson; or rebase first)
+2. Push if/when comfortable with `recipient` being on GitHub remote
+3. Run `/schedule` 3× for the 3 routines
+4. Watch the first `tactical_daily` 06:00 PT email
+5. Optional: deploy `congress_disclosure` mirror env vars if you have backup URLs handy
+
+**Stats:**
+- Branch commits: 40 (39 loops + baseline)
+- LoC across `scripts/earnings/`: ~7,773 (incl. tests + snapshots)
+- Source files: 39 .ts in earnings/
+- Test files: 26 .test.ts files
+- Snapshot fixtures: 5 .txt files (~3.5KB)
+- Wall-time: ~6 hours of overnight loops
