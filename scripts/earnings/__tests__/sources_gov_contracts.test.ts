@@ -9,7 +9,8 @@ import { toTicker } from '../_watchlist.ts';
 let server: Server;
 let endpoint = '';
 let hits: { method: string; body: unknown }[] = [];
-let respond: () => { status: number; body: unknown } = () => ({ status: 200, body: { results: [] } });
+type ReqBody = { filters?: { recipient_search_text?: string[] }; page?: number };
+let respond: (body: ReqBody) => { status: number; body: unknown } = () => ({ status: 200, body: { results: [] } });
 
 const NVDA = toTicker('NVDA');
 const AAPL = toTicker('AAPL');
@@ -29,7 +30,7 @@ before(async () => {
     let parsed: unknown;
     try { parsed = JSON.parse(raw); } catch { parsed = raw; }
     hits.push({ method: req.method ?? '', body: parsed });
-    const r = respond();
+    const r = respond((parsed as ReqBody) ?? {});
     res.writeHead(r.status, { 'content-type': 'application/json' });
     res.end(JSON.stringify(r.body));
   });
@@ -74,10 +75,13 @@ test('ticker not in lookup map → skipped (no HTTP)', async () => {
 });
 
 test('per-ticker 500 swallowed; sibling tickers still return', async () => {
-  let n = 0;
-  respond = () => {
-    n++;
-    if (n === 1) return { status: 500, body: { error: 'boom' } };
+  // Identify the failing ticker by recipient_search_text in the body so the
+  // 500 is per-ticker (and persistent across the retry helper's 4 attempts).
+  respond = (body) => {
+    const recipient = (body?.filters?.recipient_search_text?.[0] ?? '') as string;
+    if (recipient.startsWith('NVIDIA')) {
+      return { status: 500, body: { error: 'boom' } };
+    }
     return { status: 200, body: { results: [
       { 'Award ID': 'B1', 'Recipient Name': 'APPLE INC', 'Award Amount': 42,
         'Awarding Agency': 'GSA', Description: 'iPads', 'Action Date': recent(5) },

@@ -1,6 +1,13 @@
-import { fetchJson } from '../_http.ts';
+import { fetchJsonWithRetry } from '../_http.ts';
 import { toTicker } from '../_watchlist.ts';
 import type { Ticker } from '../_types.ts';
+
+// WHY pagination: page=1, limit=20 silently truncated for big federal recipients
+// (Amazon Web Services / Microsoft can have 100+ contracts in a 180-day window).
+// limit=100 + page_metadata.hasNext walk covers the long tail; MAX_PAGES=3 caps
+// the worst case at 300 records / ticker before we accept truncation as signal.
+const PAGE_LIMIT = 100;
+const MAX_PAGES = 3;
 
 // WHY this adapter shape: must match the `GovContract` type exported by
 // sources/quiver.ts so the deepdive L8 renderer can swap to USAspending
@@ -43,7 +50,7 @@ type AwardRow = {
   Description?: unknown;
   'Action Date'?: unknown;
 };
-type SearchResp = { results?: AwardRow[] };
+type SearchResp = { results?: AwardRow[]; page_metadata?: { hasNext?: boolean } };
 
 function isoDate(d: Date): string { return d.toISOString().slice(0, 10); }
 
@@ -52,7 +59,7 @@ const isNum = (x: unknown): x is number => typeof x === 'number' && Number.isFin
 
 import { parseGoodDate as goodDate } from '../_parsing.ts';
 
-function buildBody(recipient: string, start: Date, end: Date): string {
+function buildBody(recipient: string, start: Date, end: Date, page: number): string {
   return JSON.stringify({
     filters: {
       award_type_codes: AWARD_TYPE_CODES,
@@ -61,8 +68,8 @@ function buildBody(recipient: string, start: Date, end: Date): string {
     },
     fields: ['Award ID', 'Recipient Name', 'Award Amount',
       'Awarding Agency', 'Description', 'Action Date'],
-    page: 1,
-    limit: 20,
+    page,
+    limit: PAGE_LIMIT,
     sort: 'Action Date',
     order: 'desc',
   });
@@ -100,19 +107,22 @@ export async function fetchGovContracts(
     .map((t) => ({ t, name: TICKER_TO_CONTRACT_RECIPIENT[t as string] }))
     .filter((x): x is { t: Ticker; name: string } => isStr(x.name));
   const settled = await Promise.allSettled(work.map(async ({ t, name }) => {
-    const resp = await fetchJson<SearchResp>(endpoint, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'user-agent': UA,
-        accept: 'application/json',
-      },
-      body: buildBody(name, start, end),
-    });
     const out: GovContract[] = [];
-    for (const r of resp.results ?? []) {
-      const row = mapRow(toTicker(t as string), r);
-      if (row) out.push(row);
+    for (let page = 1; page <= MAX_PAGES; page++) {
+      const resp = await fetchJsonWithRetry<SearchResp>(endpoint, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'user-agent': UA,
+          accept: 'application/json',
+        },
+        body: buildBody(name, start, end, page),
+      });
+      for (const r of resp.results ?? []) {
+        const row = mapRow(toTicker(t as string), r);
+        if (row) out.push(row);
+      }
+      if (!resp.page_metadata?.hasNext) break;
     }
     return out;
   }));
