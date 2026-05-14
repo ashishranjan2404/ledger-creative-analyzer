@@ -1,4 +1,4 @@
-import { fetchJson } from './_http.ts';
+import { fetchJsonWithRetry } from './_http.ts';
 
 // WHY: Butterbase exposes a REST data API at POST /api/data/{table}. Bulk inserts
 // use the /bulk suffix with a JSON array body. If the deployed API differs (e.g.
@@ -39,13 +39,17 @@ export async function insertRow<T extends Record<string, unknown>>(
   row: T,
   cfg: ButterbaseConfig,
 ): Promise<T & { id: string; created_at?: string }> {
-  return fetchJson<T & { id: string; created_at?: string }>(
+  // WHY no-retry on writes: 5xx where the server actually processed our row
+  // would create duplicates on retry (audit_log appends, findings ids drift).
+  // Idempotent paths (earnings_alert_seen 409 swallow) live at the caller.
+  return fetchJsonWithRetry<T & { id: string; created_at?: string }>(
     dataUrl(cfg, table, false),
     {
       method: 'POST',
       headers: headers(cfg.serviceKey),
       body: JSON.stringify(row),
     },
+    { maxRetries: 0 },
   );
 }
 
@@ -59,7 +63,7 @@ export async function selectRows<T>(
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
     .join('&');
   const url = `${base}/api/data/${encodeURIComponent(table)}${qs ? `?${qs}` : ''}`;
-  return fetchJson<T[]>(url, { method: 'GET', headers: headers(cfg.serviceKey) });
+  return fetchJsonWithRetry<T[]>(url, { method: 'GET', headers: headers(cfg.serviceKey) }, { maxRetries: 2 });
 }
 
 export async function insertRows<T extends Record<string, unknown>>(
@@ -68,7 +72,7 @@ export async function insertRows<T extends Record<string, unknown>>(
   cfg: ButterbaseConfig,
 ): Promise<(T & { id: string })[]> {
   if (rows.length === 0) return [];
-  return fetchJson<(T & { id: string })[]>(
+  return fetchJsonWithRetry<(T & { id: string })[]>(
     dataUrl(cfg, table, true),
     {
       method: 'POST',
@@ -77,5 +81,6 @@ export async function insertRows<T extends Record<string, unknown>>(
       // array, wrap as JSON.stringify({ rows }) instead.
       body: JSON.stringify(rows),
     },
+    { maxRetries: 0 }, // same no-retry-on-write rationale as insertRow above
   );
 }
