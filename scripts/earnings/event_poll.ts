@@ -142,7 +142,7 @@ export async function runEventPoll(): Promise<{ alerts: number; newAlerts: numbe
       : `sent ${sentCount}/${unseen.length} new alerts to ${env.RECIPIENT}`;
   try {
     await insertRow('audit_log', {
-      step: 'event_poll', ok, ms, findings_count: unseen.length, note,
+      step: 'event_poll_run', ok, ms, findings_count: unseen.length, note,
     }, { serviceKey: env.BUTTERBASE_SERVICE_KEY });
   } catch (e) { console.warn(`[butterbase audit] ${String(e)}`); }
 

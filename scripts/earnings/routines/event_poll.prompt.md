@@ -53,6 +53,6 @@ Prints `{ alerts, newAlerts, ms }` to stdout on success — `alerts` is total al
 Writes to the existing Butterbase app `app_36ybfio2fiy7`:
 
 - `earnings_alert_seen` — dedup ledger (composite PK `ticker, alert_type, source_id`). Read by `wasSeen`, written by `markSeen`.
-- `audit_log` — one row per run with `{step: 'event_poll', ok, ms, findings_count, note}`. `findings_count` is `newAlerts.length`.
+- `audit_log` — one row per run with `{step: 'event_poll_run', ok, ms, findings_count, note}`. `findings_count` is `newAlerts.length`.
 
 Do not create new tables. Do not change recipients. Do not push to chat.
