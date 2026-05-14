@@ -30,6 +30,18 @@ function toRaw(ticker: Ticker, it: RssItem, cutoffMs: number): RawItem | null {
   return item;
 }
 
+// WHY: Yahoo's RSS endpoint occasionally returns 200 with an HTML body
+// (transient edge cache hiccup) — parseFeed yields [] in that case. One
+// retry with a 250ms delay catches these without slamming the upstream.
+// Network/HTTP errors are already retried by the circuit breaker / our
+// general fetch path; this guards specifically against the silent-empty case.
+async function fetchYahooWithParseRetry(url: string): Promise<RssItem[]> {
+  const first = await fetchRss(url);
+  if (first.length > 0) return first;
+  await new Promise((r) => setTimeout(r, 250));
+  return fetchRss(url);
+}
+
 export async function fetchYahooNews(
   tickers: readonly Ticker[],
   hoursBack: number,
@@ -39,7 +51,7 @@ export async function fetchYahooNews(
   const cutoffMs = Date.now() - hoursBack * 3_600_000;
   const settled = await Promise.allSettled(
     tickers.map((t) =>
-      withCircuitBreaker('yahoo', () => fetchRss(feedUrl(endpoint, t))).then(
+      withCircuitBreaker('yahoo', () => fetchYahooWithParseRetry(feedUrl(endpoint, t))).then(
         (items) => ({ t, items }),
       ),
     ),

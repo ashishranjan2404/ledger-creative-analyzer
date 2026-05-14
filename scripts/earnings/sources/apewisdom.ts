@@ -1,4 +1,4 @@
-import { fetchJson, withCircuitBreaker } from '../_http.ts';
+import { fetchJsonWithRetry, withCircuitBreaker } from '../_http.ts';
 import { isTrackedTicker, toTicker } from '../_watchlist.ts';
 import type { Ticker } from '../_types.ts';
 
@@ -54,7 +54,7 @@ export async function fetchApeWisdom(
   const want = new Set<string>(tickers);
   const url = `${endpoint}/${filter}`;
   const r = await withCircuitBreaker('apewisdom', () =>
-    fetchJson<Resp>(url, { headers: { 'user-agent': UA } }),
+    fetchJsonWithRetry<Resp>(url, { headers: { 'user-agent': UA } }),
   );
   const rows = r.results ?? [];
   const out: ApeWisdomMention[] = [];
