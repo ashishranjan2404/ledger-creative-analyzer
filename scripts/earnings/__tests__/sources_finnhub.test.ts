@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-import { fetchFinnhubEarnings, fetchQuoteAndShares } from '../sources/finnhub.ts';
+import { fetchFinnhubEarnings, fetchQuoteAndShares, fetchEpsEstimates } from '../sources/finnhub.ts';
 import { toTicker } from '../_watchlist.ts';
 
 let server: Server;
@@ -75,6 +75,23 @@ before(async () => {
       if (sym === 'PBOOM') { res.writeHead(500); res.end('boom'); return; }
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ shareOutstanding: 24500 })); return; // 24,500 million = 24.5B
+    }
+    // L36 estimate endpoint — happy returns ascending fiscal years, 500 for EBOOM,
+    // empty array for EMPTY (free-tier "no analyst coverage" shape).
+    if (url.pathname === '/stock/estimate') {
+      if (sym === 'EBOOM') { res.writeHead(500); res.end('boom'); return; }
+      if (sym === 'EMPTY') {
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ data: [] })); return;
+      }
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({
+        data: [
+          { period: '2025-12-31', epsAvg: 4.0 },
+          { period: '2026-12-31', epsAvg: 5.5 },
+        ],
+      }));
+      return;
     }
     if (url.pathname !== '/calendar/earnings') {
       res.writeHead(404);
@@ -220,6 +237,34 @@ test('fetchQuoteAndShares: 500 on profile2 endpoint → null (graceful)', async 
   } finally {
     console.warn = orig;
   }
+});
+
+// === fetchEpsEstimates: L36 forward-EPS YoY data ===
+test('fetchEpsEstimates: happy path returns current + priorYear from sorted periods', async () => {
+  const out = await fetchEpsEstimates(toTicker('NVDA'), 'tk', quoteBase);
+  assert.ok(out, 'expected non-null payload');
+  // ascending sort → last = 2026 (current), second-last = 2025 (prior)
+  assert.equal(out.current, 5.5);
+  assert.equal(out.priorYear, 4.0);
+});
+
+test('fetchEpsEstimates: 500 → null (graceful with warning)', async () => {
+  const warns: string[] = [];
+  const orig = console.warn;
+  console.warn = (msg: string) => { warns.push(msg); };
+  try {
+    const out = await fetchEpsEstimates(toTicker('EBOOM'), 'tk', quoteBase);
+    assert.equal(out, null);
+    assert.equal(warns.length, 1);
+    assert.match(warns[0]!, /\[finnhub-estimate\] EBOOM:/);
+  } finally {
+    console.warn = orig;
+  }
+});
+
+test('fetchEpsEstimates: empty data[] → null (no analyst coverage)', async () => {
+  const out = await fetchEpsEstimates(toTicker('EMPTY'), 'tk', quoteBase);
+  assert.equal(out, null);
 });
 
 test('fetchQuoteAndShares: null `c` (closed market / no data) → null', async () => {

@@ -80,7 +80,7 @@ async function buildCard(
   const q = finnhubKey ? await fetchQuoteAndShares(ticker, finnhubKey) : null;
   const [fundR, valR, opR, secR] = await Promise.allSettled([
     fetchFundamentalsTrajectory(ticker, undefined, cfg),
-    fetchValuationContext(ticker, q?.price ?? Number.NaN, q?.sharesOutstanding ?? Number.NaN),
+    fetchValuationContext(ticker, q?.price ?? Number.NaN, q?.sharesOutstanding ?? Number.NaN, undefined, undefined, finnhubKey),
     fetchOperationalSignal(ticker),
     fetchSecularSignal(ticker),
   ] as const);

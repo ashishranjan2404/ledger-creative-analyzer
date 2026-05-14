@@ -82,6 +82,42 @@ export async function fetchQuoteAndShares(
   }
 }
 
+// WHY estimate-shape: Finnhub /stock/estimate returns `data[]` with per-period rows
+// keyed by `period` (YYYY-MM-DD year-end) and `epsAvg` (mean analyst EPS). Free tier
+// returns annual rows; we pick (current=largest year, prior=largest year - 1).
+// Returns null on missing key, empty data, network failure, or insufficient history.
+type EstimateRow = { period?: string; epsAvg?: number | null };
+type EstimateResp = { data?: EstimateRow[]; symbol?: string; freq?: string };
+
+export async function fetchEpsEstimates(
+  ticker: Ticker,
+  apiKey: string,
+  endpoint: string = DEFAULT_QUOTE_BASE,
+): Promise<{ current: number; priorYear: number } | null> {
+  const sym = encodeURIComponent(ticker);
+  const tk = encodeURIComponent(apiKey);
+  try {
+    const j = await fetchJsonWithRetry<EstimateResp>(
+      `${endpoint}/stock/estimate?symbol=${sym}&token=${tk}`,
+    );
+    const rows = Array.isArray(j.data) ? j.data : [];
+    // Each row covers a fiscal year-end period. Sort ascending so [-1] = next/current
+    // year estimate, [-2] = prior. Filter to rows with both period + finite epsAvg so
+    // empty-array and partial-row payloads degrade to null instead of throwing.
+    const clean = rows
+      .filter((r): r is { period: string; epsAvg: number } =>
+        typeof r.period === 'string' && typeof r.epsAvg === 'number' && Number.isFinite(r.epsAvg))
+      .sort((a, b) => a.period.localeCompare(b.period));
+    if (clean.length < 2) return null;
+    const current = clean[clean.length - 1]!.epsAvg;
+    const priorYear = clean[clean.length - 2]!.epsAvg;
+    return { current, priorYear };
+  } catch (e) {
+    console.warn(`[finnhub-estimate] ${ticker}: ${String(e)}`);
+    return null;
+  }
+}
+
 export async function fetchFinnhubEarnings(
   tickers: readonly Ticker[],
   dateFrom: Date,

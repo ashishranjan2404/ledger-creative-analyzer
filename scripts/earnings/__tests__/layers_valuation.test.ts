@@ -20,6 +20,9 @@ const PATHS = {
   capex: `${BASE}/PaymentsToAcquirePropertyPlantAndEquipment.json`,
   debt: `${BASE}/LongTermDebt.json`,
   cash: `${BASE}/CashAndCashEquivalentsAtCarryingValue.json`,
+  equity: `${BASE}/StockholdersEquity.json`,
+  revenue: `${BASE}/Revenues.json`,
+  revenueAsc606: `${BASE}/RevenueFromContractWithCustomerExcludingAssessedTax.json`,
 };
 const usd = (e: unknown[]) => JSON.stringify({ units: { USD: e } });
 
@@ -68,6 +71,13 @@ beforeEach(async () => {
   await tickerToCik(toTicker('NVDA'), endpoint);
 });
 
+// Default equity + revenue so pre-L34 tests still see finite P/B + EV/Sales.
+// Tests that probe missing-equity / missing-revenue paths overwrite via `__404__`.
+function seedEquityRevenueDefaults(): void {
+  payloadByPath.set(PATHS.equity, usd(quarters(24, 2e10)));
+  payloadByPath.set(PATHS.revenue, usd(quarters(24, 8e9)));
+}
+
 after(async () => new Promise<void>((res, rej) => server.close((e) => (e ? rej(e) : res()))));
 
 function setHistory(opInc: number, ocf: number, capex: number, debt: number, cash: number, n = 24): void {
@@ -78,8 +88,15 @@ function setHistory(opInc: number, ocf: number, capex: number, debt: number, cas
   payloadByPath.set(PATHS.cash, usd(quarters(n, cash)));
 }
 
+// L34/L35: separate helper so tests can choose equity + revenue independently.
+function setEquityAndRevenue(equity: number, revenue: number, n = 24): void {
+  payloadByPath.set(PATHS.equity, usd(quarters(n, equity)));
+  payloadByPath.set(PATHS.revenue, usd(quarters(n, revenue)));
+}
+
 test('happy path: current + median5yr populated; sectorMedian via 2-digit SIC prefix', async () => {
   setHistory(1e9, 1.2e9, 0.2e9, 5e9, 10e9);
+  seedEquityRevenueDefaults();
   const calls: string[] = [];
   const lookup: SectorPriorsLookup = (s) => {
     calls.push(s);
@@ -94,7 +111,11 @@ test('happy path: current + median5yr populated; sectorMedian via 2-digit SIC pr
   assert.ok(Math.abs(m['EV/EBITDA']!.current - 9.5e10 / 4e9) < 1e-6);
   // FCF = (1.2e9 - 0.2e9)*4 / 1e11 *100 = 4
   assert.ok(Math.abs(m['FCF yield']!.current - 4) < 1e-6);
-  for (const x of ctx.metrics) assert.ok(Number.isFinite(x.median5yr), `${x.label} median5yr`);
+  // fwdEPS YoY medians are intentionally NaN (L36 has no historical context).
+  for (const x of ctx.metrics) {
+    if (x.label === 'fwdEPS YoY') continue;
+    assert.ok(Number.isFinite(x.median5yr), `${x.label} median5yr`);
+  }
   assert.equal(m['Fwd P/E']!.sectorMedian, 25);
   assert.equal(m['EV/EBITDA']!.sectorMedian, 18);
   assert.equal(m['FCF yield']!.sectorMedian, 4);
@@ -102,9 +123,15 @@ test('happy path: current + median5yr populated; sectorMedian via 2-digit SIC pr
 
 test('missing sectorPriors: sectorMedian NaN; other fields populated', async () => {
   setHistory(1e9, 1.2e9, 0.2e9, 5e9, 10e9);
+  seedEquityRevenueDefaults();
   const ctx = await fetchValuationContext(toTicker('NVDA'), 100, 1e9, undefined, endpoint);
   for (const x of ctx.metrics) {
     assert.ok(Number.isNaN(x.sectorMedian), `${x.label} sectorMedian`);
+    // fwdEPS YoY current depends on FINNHUB_KEY (absent here) → NaN by design.
+    if (x.label === 'fwdEPS YoY') {
+      assert.ok(Number.isNaN(x.current), 'fwdEPS NaN without key');
+      continue;
+    }
     assert.ok(Number.isFinite(x.current), `${x.label} current`);
   }
 });
@@ -129,8 +156,80 @@ test('insufficient history (2 quarters) ⇒ median5yr NaN, current NaN too', asy
   assert.ok(Number.isNaN(m['Fwd P/E']!.current));
 });
 
+// === L34: P/B ratio ===
+test('L34 P/B: current = marketCap/equity; 5yr median + sector populated', async () => {
+  setHistory(1e9, 1.2e9, 0.2e9, 5e9, 10e9);
+  setEquityAndRevenue(2e10, 8e9);
+  // FINNHUB_KEY absent — fwdEPS YoY → n/a, but P/B/EV/Sales still compute.
+  const ctx = await fetchValuationContext(
+    toTicker('NVDA'), 100, 1e9,
+    () => ({ fwdPE: 25, evEbitda: 18, fcfYield: 4, pb: 3, evSales: 6 }),
+    endpoint,
+  );
+  const m = Object.fromEntries(ctx.metrics.map((x) => [x.label, x]));
+  // marketCap = 1e11; equity = 2e10 → P/B = 5
+  assert.ok(Math.abs(m['P/B']!.current - 5) < 1e-6, `got ${m['P/B']!.current}`);
+  assert.ok(Math.abs(m['P/B']!.median5yr - 5) < 1e-6, '5yr median = same since equity constant');
+  assert.equal(m['P/B']!.sectorMedian, 3);
+  assert.equal(m['P/B']!.unit, 'multiple');
+});
+
+test('L34 P/B: missing StockholdersEquity ⇒ n/a (no throw)', async () => {
+  setHistory(1e9, 1.2e9, 0.2e9, 5e9, 10e9);
+  // equity 404; revenue still set so EV/Sales survives
+  payloadByPath.set(PATHS.revenue, usd(quarters(24, 8e9)));
+  const ctx = await fetchValuationContext(toTicker('NVDA'), 100, 1e9, undefined, endpoint);
+  const m = Object.fromEntries(ctx.metrics.map((x) => [x.label, x]));
+  assert.ok(Number.isNaN(m['P/B']!.current), 'P/B current NaN when equity absent');
+  assert.ok(Number.isFinite(m['EV/Sales']!.current), 'sibling EV/Sales unaffected');
+});
+
+// === L35: EV/Sales ===
+test('L35 EV/Sales: current = EV/ttmRevenue; 5yr median + sector populated', async () => {
+  setHistory(1e9, 1.2e9, 0.2e9, 5e9, 10e9);
+  setEquityAndRevenue(2e10, 8e9);
+  const ctx = await fetchValuationContext(
+    toTicker('NVDA'), 100, 1e9,
+    () => ({ fwdPE: 25, evEbitda: 18, fcfYield: 4, pb: 3, evSales: 6 }),
+    endpoint,
+  );
+  const m = Object.fromEntries(ctx.metrics.map((x) => [x.label, x]));
+  // EV = 1e11 + 5e9 - 10e9 = 9.5e10; ttm rev = 8e9 * 4 = 3.2e10 → EV/Sales = ~2.969
+  const expected = 9.5e10 / 3.2e10;
+  assert.ok(Math.abs(m['EV/Sales']!.current - expected) < 1e-6);
+  assert.ok(Number.isFinite(m['EV/Sales']!.median5yr));
+  assert.equal(m['EV/Sales']!.sectorMedian, 6);
+});
+
+test('L35 EV/Sales: uses ASC-606 fallback when Revenues absent', async () => {
+  setHistory(1e9, 1.2e9, 0.2e9, 5e9, 10e9);
+  payloadByPath.set(PATHS.equity, usd(quarters(24, 2e10)));
+  // Revenues 404; ASC-606 tag present.
+  payloadByPath.set(PATHS.revenueAsc606, usd(quarters(24, 8e9)));
+  const ctx = await fetchValuationContext(toTicker('NVDA'), 100, 1e9, undefined, endpoint);
+  const m = Object.fromEntries(ctx.metrics.map((x) => [x.label, x]));
+  assert.ok(Number.isFinite(m['EV/Sales']!.current), 'fallback tag should yield finite EV/Sales');
+});
+
+// === L36: Forward EPS YoY ===
+test('L36 fwdEPS YoY: missing FINNHUB_KEY ⇒ n/a, sibling metrics finite', async () => {
+  setHistory(1e9, 1.2e9, 0.2e9, 5e9, 10e9);
+  setEquityAndRevenue(2e10, 8e9);
+  // finnhubKey null ⇒ no fetch attempted; fwdEPS row still present, just NaN.
+  const ctx = await fetchValuationContext(toTicker('NVDA'), 100, 1e9, undefined, endpoint, null);
+  const m = Object.fromEntries(ctx.metrics.map((x) => [x.label, x]));
+  assert.ok(Number.isNaN(m['fwdEPS YoY']!.current), 'fwdEPS current NaN sans key');
+  assert.ok(Number.isNaN(m['fwdEPS YoY']!.median5yr), 'fwdEPS median5yr always NaN');
+  assert.ok(Number.isNaN(m['fwdEPS YoY']!.sectorMedian), 'fwdEPS sectorMedian always NaN');
+  assert.equal(m['fwdEPS YoY']!.unit, 'pct');
+  // Siblings unaffected by missing key.
+  assert.ok(Number.isFinite(m['P/B']!.current), 'P/B unaffected');
+  assert.ok(Number.isFinite(m['EV/Sales']!.current), 'EV/Sales unaffected');
+});
+
 test('SIC fetch failure ⇒ sectorSic empty, layer continues with multiples', async () => {
   setHistory(1e9, 1.2e9, 0.2e9, 5e9, 10e9);
+  seedEquityRevenueDefaults();
   payloadByPath.set(SUB, '__404__');
   const ctx = await fetchValuationContext(
     toTicker('NVDA'), 100, 1e9,
@@ -141,6 +240,8 @@ test('SIC fetch failure ⇒ sectorSic empty, layer continues with multiples', as
   // No SIC ⇒ no lookup call ⇒ sectorMedian NaN, but multiples still computed.
   for (const x of ctx.metrics) {
     assert.ok(Number.isNaN(x.sectorMedian), `${x.label} sectorMedian NaN without SIC`);
+    // fwdEPS YoY needs FINNHUB_KEY (not set here) → NaN current is expected.
+    if (x.label === 'fwdEPS YoY') continue;
     assert.ok(Number.isFinite(x.current), `${x.label} current finite`);
   }
 });
