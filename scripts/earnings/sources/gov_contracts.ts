@@ -50,11 +50,7 @@ function isoDate(d: Date): string { return d.toISOString().slice(0, 10); }
 const isStr = (x: unknown): x is string => typeof x === 'string' && x.length > 0;
 const isNum = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
 
-function goodDate(s: unknown): Date | null {
-  if (!isStr(s)) return null;
-  const d = new Date(s);
-  return Number.isFinite(d.getTime()) ? d : null;
-}
+import { parseGoodDate as goodDate } from '../_parsing.ts';
 
 function buildBody(recipient: string, start: Date, end: Date): string {
   return JSON.stringify({

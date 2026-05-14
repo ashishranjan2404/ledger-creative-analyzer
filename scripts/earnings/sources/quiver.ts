@@ -35,11 +35,7 @@ function pickNum(o: Record<string, unknown>, ...keys: string[]): number | undefi
   }
   return undefined;
 }
-function goodDate(s: string | undefined): Date | null {
-  if (!s) return null;
-  const d = new Date(s);
-  return Number.isFinite(d.getTime()) ? d : null;
-}
+import { parseGoodDate as goodDate } from '../_parsing.ts';
 async function settle<T>(label: string, tickers: readonly Ticker[],
   work: (t: Ticker) => Promise<T[]>): Promise<T[]> {
   const r = await Promise.allSettled(tickers.map(work));

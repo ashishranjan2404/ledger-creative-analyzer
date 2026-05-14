@@ -26,11 +26,7 @@ function pickStr(o: Record<string, unknown>, ...keys: string[]): string | undefi
   for (const k of keys) { const v = o[k]; if (isStr(v)) return v; }
   return undefined;
 }
-function goodDate(s: string | undefined): Date | null {
-  if (!s) return null;
-  const d = new Date(s);
-  return Number.isFinite(d.getTime()) ? d : null;
-}
+import { parseGoodDate as goodDate } from '../_parsing.ts';
 
 // WHY: Senate feed labels sells "Sale (Partial)" / "Sale (Full)"; House uses
 // "purchase" / "sale" lowercase. Coerce to the short canonical form Quiver emits.
