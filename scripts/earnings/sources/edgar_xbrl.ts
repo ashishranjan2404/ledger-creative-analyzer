@@ -1,4 +1,4 @@
-import { fetchJson } from '../_http.ts';
+import { fetchJsonWithRetry } from '../_http.ts';
 import { tickerToCik } from './edgar.ts';
 import type { Ticker } from '../_types.ts';
 
@@ -70,7 +70,7 @@ export function fetchXbrlConcept(
 async function doFetch(ticker: Ticker, tag: string, endpoint: string): Promise<XbrlPoint[]> {
   const cik = await tickerToCik(ticker, endpoint);
   const url = `${endpoint}/api/xbrl/companyconcept/CIK${cik}/us-gaap/${tag}.json`;
-  const j = await fetchJson<ConceptResponse>(url, { headers: HEADERS });
+  const j = await fetchJsonWithRetry<ConceptResponse>(url, { headers: HEADERS });
   const rows = j.units?.USD ?? [];
   const out: XbrlPoint[] = [];
   for (const r of rows) {

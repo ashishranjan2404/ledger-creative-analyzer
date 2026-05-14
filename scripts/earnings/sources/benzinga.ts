@@ -1,4 +1,4 @@
-import { fetchJson } from '../_http.ts';
+import { fetchJsonWithRetry } from '../_http.ts';
 import type { RawItem, Ticker } from '../_types.ts';
 import { toTicker } from '../_watchlist.ts';
 
@@ -47,7 +47,7 @@ export async function fetchBenzingaNews(
   u.searchParams.set('tickers', tickers.join(','));
   u.searchParams.set('displayOutput', 'full');
   u.searchParams.set('pageSize', '50');
-  const items = await fetchJson<BenzingaItem[]>(u.toString());
+  const items = await fetchJsonWithRetry<BenzingaItem[]>(u.toString());
   const watch = new Set<string>(tickers);
   const out: RawItem[] = [];
   for (const it of items) {

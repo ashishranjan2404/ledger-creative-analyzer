@@ -1,4 +1,4 @@
-import { fetchJson, fetchRss } from '../_http.ts';
+import { fetchJsonWithRetry, fetchRss } from '../_http.ts';
 import type { RawItem, Ticker } from '../_types.ts';
 
 // SEC requires a descriptive UA per https://www.sec.gov/os/accessing-edgar-data
@@ -15,7 +15,7 @@ let cikLoad: Promise<CikMap> | null = null;
 
 function loadCikMap(endpoint: string): Promise<CikMap> {
   if (cikLoad) return cikLoad;
-  cikLoad = fetchJson<Record<string, TickerRow>>(`${endpoint}/files/company_tickers.json`, {
+  cikLoad = fetchJsonWithRetry<Record<string, TickerRow>>(`${endpoint}/files/company_tickers.json`, {
     headers: HEADERS,
   })
     .then(

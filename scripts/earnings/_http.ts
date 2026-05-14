@@ -48,7 +48,20 @@ export type RetryOpts = {
 // burst load; without backoff a single rate-spike kills the whole run. Honors
 // Retry-After when present (seconds or HTTP-date), else exponential backoff
 // (500ms, 1s, 2s, 4s …). 5xx is also retried (transient origin errors). 4xx
-// other than 429 is treated as a hard error — the caller's input is wrong.
+// other than 429 is treated as a HARD error — caller input is wrong. Hard
+// errors short-circuit the outer catch via HardHttpError so we don't retry
+// our own intentional throw.
+class HardHttpError extends Error {
+  readonly status: number;
+  readonly statusText: string;
+  readonly url: string;
+  constructor(status: number, statusText: string, url: string) {
+    super(`HTTP ${status} ${statusText}: ${url}`);
+    this.status = status;
+    this.statusText = statusText;
+    this.url = url;
+  }
+}
 export async function fetchJsonWithRetry<T>(
   url: string,
   init?: RequestInit,
@@ -62,14 +75,13 @@ export async function fetchJsonWithRetry<T>(
       const res = await fetchWithTimeout(url, init, opts.timeoutMs);
       if (res.ok) return (await res.json()) as T;
       const retriable = res.status === 429 || res.status >= 500;
-      if (!retriable || attempt === maxRetries) {
-        throw new Error(`HTTP ${res.status} ${res.statusText}: ${url}`);
-      }
+      if (!retriable) throw new HardHttpError(res.status, res.statusText, url);
+      if (attempt === maxRetries) throw new Error(`HTTP ${res.status} ${res.statusText}: ${url}`);
       const ra = retryAfterMs(res.headers.get('retry-after'));
-      const delay = ra ?? baseDelay * 2 ** attempt;
-      await sleep(delay);
+      await sleep(ra ?? baseDelay * 2 ** attempt);
       continue;
     } catch (e) {
+      if (e instanceof HardHttpError) throw new Error(e.message);
       lastErr = e;
       if (attempt === maxRetries) throw e;
       // Network-level errors (DNS, ECONNRESET, etc.) — also retried with backoff.

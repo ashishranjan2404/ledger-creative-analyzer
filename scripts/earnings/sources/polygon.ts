@@ -1,4 +1,4 @@
-import { fetchJson } from '../_http.ts';
+import { fetchJsonWithRetry } from '../_http.ts';
 import type { EarningsEvent, Ticker } from '../_types.ts';
 import { toTicker } from '../_watchlist.ts';
 
@@ -60,7 +60,7 @@ export async function fetchPolygonEarnings(
         `&filing_date.gte=${from}` +
         `&filing_date.lte=${to}` +
         `&apiKey=${encodeURIComponent(apiKey)}`;
-      const json = await fetchJson<PolygonResponse>(url);
+      const json = await fetchJsonWithRetry<PolygonResponse>(url);
       const out: EarningsEvent[] = [];
       for (const r of json.results ?? []) {
         const ev = toEvent(toTicker(t), r);
