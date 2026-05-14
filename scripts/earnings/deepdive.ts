@@ -14,7 +14,7 @@ import { fetchLobbying } from './sources/lobbying.ts';
 import { fetchGovContracts } from './sources/gov_contracts.ts';
 import { renderDeepDiveText, renderDeepDiveSubject, type DeepDiveCard, type GovCapitalSignal } from './render_deepdive.ts';
 import { sendEmail } from './send.ts';
-import { insertRow } from './_butterbase.ts';
+import { insertRow, type ButterbaseConfig } from './_butterbase.ts';
 import type { Ticker } from './_types.ts';
 
 export const ENV_VARS = ['RESEND_KEY', 'BUTTERBASE_SERVICE_KEY', 'RECIPIENT'] as const;
@@ -77,13 +77,13 @@ async function maybeGovCapital(ticker: Ticker): Promise<GovCapitalSignal | null>
 async function buildCard(
   ticker: Ticker, asOf: Date,
   transcriptsByTicker: ReadonlyMap<Ticker, readonly Transcript[]>, llm: LlmClient | null,
-  finnhubKey: string | null,
+  finnhubKey: string | null, cfg: ButterbaseConfig | null,
 ): Promise<DeepDiveCard> {
   // L5 quote: optional. No FINNHUB_KEY (or fetch failure) ⇒ NaN/NaN ⇒ renderer prints
   // 'n/a' for `current` multiples; 5yr median + sector context still populate.
   const q = finnhubKey ? await fetchQuoteAndShares(ticker, finnhubKey) : null;
   const [fundR, valR, opR, secR] = await Promise.allSettled([
-    fetchFundamentalsTrajectory(ticker),
+    fetchFundamentalsTrajectory(ticker, undefined, cfg),
     fetchValuationContext(ticker, q?.price ?? Number.NaN, q?.sharesOutstanding ?? Number.NaN),
     fetchOperationalSignal(ticker),
     fetchSecularSignal(ticker),
@@ -127,7 +127,8 @@ export async function runDeepDive(): Promise<{ sent: boolean; cards: number; ms:
   }
 
   // Parallel per-ticker: 4 × ~6 EDGAR calls = 24 in flight, within SEC's 10/sec.
-  const cards = await Promise.all(slate.map((t) => buildCard(t, today, transcriptsByTicker, llm, finnhubKey)));
+  const bb: ButterbaseConfig = { serviceKey: env.BUTTERBASE_SERVICE_KEY };
+  const cards = await Promise.all(slate.map((t) => buildCard(t, today, transcriptsByTicker, llm, finnhubKey, bb)));
 
   const subject = renderDeepDiveSubject(today, cards.length);
   const text = renderDeepDiveText(cards, today);

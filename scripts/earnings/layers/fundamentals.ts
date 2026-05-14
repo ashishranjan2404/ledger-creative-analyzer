@@ -6,7 +6,13 @@
 // ROIC denom = debt + 0.5×revenue (skips equity book value to avoid extra tag);
 // EBITDA ≈ OperatingIncome (no D&A add-back). All %s are quarterly, not TTM.
 import { fetchXbrlConcept, type XbrlPoint } from '../sources/edgar_xbrl.ts';
+import { getLatestSnapshot, putSnapshot } from '../_snapshot_cache.ts';
+import type { ButterbaseConfig } from '../_butterbase.ts';
 import type { Ticker } from '../_types.ts';
+
+// Versioned cache key: bump when FundamentalsTrajectory schema changes so we
+// don't silently serve old-shape payloads against new code.
+const CACHE_LAYER = 'fundamentals_v1';
 
 export type FundamentalsMetric = {
   label: string;
@@ -112,6 +118,26 @@ const FORMULAS: ReadonlyArray<{ label: string; unit: FundamentalsMetric['unit'];
 ];
 
 export async function fetchFundamentalsTrajectory(
+  ticker: Ticker, endpoint?: string, cfg?: ButterbaseConfig | null,
+): Promise<FundamentalsTrajectory> {
+  // Cache fast-path: when cfg provided, try earnings_snapshot first. Miss/error on
+  // READ degrades to live XBRL silently (cache is opt-in optimization); a failed
+  // WRITE is fire-and-forget so a Butterbase outage NEVER blocks the deep-dive run.
+  if (cfg) {
+    try {
+      const hit = await getLatestSnapshot<FundamentalsTrajectory>(ticker, CACHE_LAYER, cfg);
+      if (hit) return { ...hit, asOf: new Date(hit.asOf) }; // revive Date from JSON string
+    } catch (e) { console.warn(`[fundamentals-cache ${ticker} read] ${String(e)}`); }
+  }
+  const fresh = await fetchFundamentalsTrajectoryLive(ticker, endpoint);
+  if (cfg) {
+    putSnapshot(ticker, CACHE_LAYER, fresh, cfg)
+      .catch((e: unknown) => console.warn(`[fundamentals-cache ${ticker} write] ${String(e)}`));
+  }
+  return fresh;
+}
+
+async function fetchFundamentalsTrajectoryLive(
   ticker: Ticker, endpoint?: string,
 ): Promise<FundamentalsTrajectory> {
   const keys = Object.keys(TAGS) as TagKey[];

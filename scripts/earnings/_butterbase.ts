@@ -4,6 +4,14 @@ import { fetchJson } from './_http.ts';
 // use the /bulk suffix with a JSON array body. If the deployed API differs (e.g.
 // expects {rows: [...]} or no /bulk suffix), the merger should adjust BULK_PATH /
 // bulkBody — the rest of the contract (Bearer auth, JSON, echoed rows) is stable.
+//
+// WHY selectRows shape: assumed convention is `GET /api/data/{table}?col=val` with
+// equality filters serialized as a flat query string and the response a JSON array
+// of rows. This MIRRORS the POST insert shape (same path, Bearer auth, JSON body
+// for writes). The GET form is UNVERIFIED against the deployed router — if the real
+// API uses `?where[col]=val`, `/api/data/{table}/select`, or a body filter, fix the
+// query serialization + path in selectRows below; the cache layer above never needs
+// to change.
 
 export type ButterbaseConfig = {
   baseUrl?: string;
@@ -39,6 +47,19 @@ export async function insertRow<T extends Record<string, unknown>>(
       body: JSON.stringify(row),
     },
   );
+}
+
+export async function selectRows<T>(
+  table: string,
+  where: Record<string, string | number>,
+  cfg: ButterbaseConfig,
+): Promise<T[]> {
+  const base = (cfg.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '');
+  const qs = Object.entries(where)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+    .join('&');
+  const url = `${base}/api/data/${encodeURIComponent(table)}${qs ? `?${qs}` : ''}`;
+  return fetchJson<T[]>(url, { method: 'GET', headers: headers(cfg.serviceKey) });
 }
 
 export async function insertRows<T extends Record<string, unknown>>(

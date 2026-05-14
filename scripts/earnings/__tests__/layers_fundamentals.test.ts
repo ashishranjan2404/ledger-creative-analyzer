@@ -126,6 +126,89 @@ test('empty: every tag missing → all metrics NaN-only, no throw', async () => 
   }
 });
 
+// ---- Cache wiring (Ralph 11) ----
+
+import { createServer as createBbServer } from 'node:http';
+import type { ButterbaseConfig } from '../_butterbase.ts';
+
+type BbHit = { method: string | undefined; url: string | undefined; body: unknown };
+
+async function withBbServer(
+  fn: (cfg: ButterbaseConfig, hits: BbHit[], setGet: (body: unknown) => void) => Promise<void>,
+): Promise<void> {
+  const hits: BbHit[] = [];
+  let getBody: unknown = [];
+  const srv = createBbServer((req, res) => {
+    let buf = '';
+    req.setEncoding('utf8');
+    req.on('data', (c) => (buf += c));
+    req.on('end', () => {
+      const parsed: unknown = buf ? JSON.parse(buf) : undefined;
+      hits.push({ method: req.method, url: req.url, body: parsed });
+      res.writeHead(200, { 'content-type': 'application/json' });
+      if (req.method === 'GET') res.end(JSON.stringify(getBody));
+      else res.end(JSON.stringify({ id: 'r', ...(parsed as object) }));
+    });
+  });
+  await new Promise<void>((r) => srv.listen(0, '127.0.0.1', r));
+  const port = (srv.address() as AddressInfo).port;
+  const cfg: ButterbaseConfig = { baseUrl: `http://127.0.0.1:${port}`, serviceKey: 'k' };
+  try {
+    await fn(cfg, hits, (b) => { getBody = b; });
+  } finally {
+    await new Promise<void>((res, rej) => srv.close((e) => (e ? rej(e) : res())));
+  }
+}
+
+test('cache hit: cached payload returned, no XBRL fetch performed', async () => {
+  // Sabotage XBRL by NOT setting any payloads — if cache misses, all metrics become NaN.
+  // The cached value uses a sentinel metric label not produced by the live path.
+  const today = new Date().toISOString().slice(0, 10);
+  const cached = {
+    ticker: 'NVDA',
+    asOf: '2026-05-01T00:00:00.000Z',
+    metrics: [{ label: 'CACHED_SENTINEL', values: [1, 2, 3, 4, 5, 6, 7, 8], unit: 'pct' }],
+  };
+  await withBbServer(async (cfg, hits, setGet) => {
+    setGet([{ ticker: 'NVDA', layer: 'fundamentals_v1', snapshot_date: today, payload: cached }]);
+    const traj = await fetchFundamentalsTrajectory(toTicker('NVDA'), endpoint, cfg);
+    assert.equal(traj.metrics.length, 1);
+    assert.equal(traj.metrics[0]?.label, 'CACHED_SENTINEL');
+    assert.deepEqual(traj.metrics[0]?.values, [1, 2, 3, 4, 5, 6, 7, 8]);
+    assert.ok(traj.asOf instanceof Date && traj.asOf.toISOString() === '2026-05-01T00:00:00.000Z');
+    // Only a GET to butterbase should have fired (no putSnapshot on hit).
+    assert.equal(hits.length, 1);
+    assert.equal(hits[0]?.method, 'GET');
+  });
+});
+
+test('cache miss → live XBRL fetch → fire-and-forget write to butterbase', async () => {
+  payloads.set(path('Revenues'), usd(rows([10e9, 11e9, 12e9, 13e9, 14e9, 15e9, 16e9, 17e9])));
+  await withBbServer(async (cfg, hits, setGet) => {
+    setGet([]); // no cached row
+    const traj = await fetchFundamentalsTrajectory(toTicker('NVDA'), endpoint, cfg);
+    // Live path produces the standard 5 metrics.
+    assert.equal(traj.metrics.length, 5);
+    assert.deepEqual(traj.metrics.map((m) => m.label),
+      ['Revenue YoY', 'FCF margin', 'Gross margin', 'ROIC', 'Net debt / EBITDA']);
+    // Wait one tick for the fire-and-forget putSnapshot to land.
+    await new Promise((r) => setTimeout(r, 30));
+    const methods = hits.map((h) => h.method);
+    assert.deepEqual(methods, ['GET', 'POST']);
+    const post = hits[1]?.body as { ticker: string; layer: string; payload: { metrics: unknown[] } };
+    assert.equal(post.ticker, 'NVDA');
+    assert.equal(post.layer, 'fundamentals_v1');
+    assert.equal(post.payload.metrics.length, 5);
+  });
+});
+
+test('cfg=null: behaves as today (no butterbase calls)', async () => {
+  payloads.set(path('Revenues'), usd(rows([10e9, 11e9, 12e9, 13e9, 14e9, 15e9, 16e9, 17e9])));
+  // Pass null explicitly; if the cache layer fired, this would throw (no server).
+  const traj = await fetchFundamentalsTrajectory(toTicker('NVDA'), endpoint, null);
+  assert.equal(traj.metrics.length, 5);
+});
+
 test('restated quarter: latest filed-date wins', async () => {
   // Same (fy=2025, fp=Q4) emitted twice: original 10-Q then restated 10-K with later filed date.
   const original = { end: '2025-01-26', val: 100e9, fp: 'Q4', fy: 2025, form: '10-Q', filed: '2025-02-20' };

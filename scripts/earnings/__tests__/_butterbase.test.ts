@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createServer, type IncomingMessage, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 
-import { insertRow, insertRows, type ButterbaseConfig } from '../_butterbase.ts';
+import { insertRow, insertRows, selectRows, type ButterbaseConfig } from '../_butterbase.ts';
 
 type Hit = {
   method: string | undefined;
@@ -17,6 +17,7 @@ let server: Server;
 let base: string;
 let hits: Hit[] = [];
 let nextStatus = 200;
+let nextGetBody: unknown = []; // body returned for GET (selectRows) requests.
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -45,7 +46,9 @@ before(async () => {
       return;
     }
     res.writeHead(200, { 'content-type': 'application/json' });
-    if (Array.isArray(parsed)) {
+    if (req.method === 'GET') {
+      res.end(JSON.stringify(nextGetBody));
+    } else if (Array.isArray(parsed)) {
       const rows = parsed.map((r, i) => ({ id: `fake-uuid-${i}`, ...(r as object) }));
       res.end(JSON.stringify(rows));
     } else {
@@ -66,6 +69,7 @@ after(async () => {
 beforeEach(() => {
   hits = [];
   nextStatus = 200;
+  nextGetBody = [];
 });
 
 const cfg = (): ButterbaseConfig => ({ baseUrl: base, serviceKey: 'sk_test_123' });
@@ -115,6 +119,38 @@ test('insertRows propagates HTTP 500 (does not swallow)', async () => {
   nextStatus = 500;
   await assert.rejects(
     () => insertRows('findings', [{ x: 1 }], cfg()),
+    /HTTP 500/,
+  );
+});
+
+test('selectRows: GET with querystring filters, Bearer auth, returns parsed array', async () => {
+  nextGetBody = [
+    { ticker: 'NVDA', layer: 'fundamentals_v1', snapshot_date: '2026-05-13', payload: { foo: 1 } },
+  ];
+  const out = await selectRows<{ ticker: string; payload: { foo: number } }>(
+    'earnings_snapshot', { ticker: 'NVDA', layer: 'fundamentals_v1' }, cfg(),
+  );
+  assert.equal(hits.length, 1);
+  const h = hits[0]!;
+  assert.equal(h.method, 'GET');
+  // Query order follows Object.entries insertion order.
+  assert.equal(h.url, '/api/data/earnings_snapshot?ticker=NVDA&layer=fundamentals_v1');
+  assert.equal(h.authorization, 'Bearer sk_test_123');
+  assert.equal(out.length, 1);
+  assert.equal(out[0]?.ticker, 'NVDA');
+  assert.deepEqual(out[0]?.payload, { foo: 1 });
+});
+
+test('selectRows: empty where omits querystring', async () => {
+  nextGetBody = [];
+  await selectRows('earnings_snapshot', {}, cfg());
+  assert.equal(hits[0]?.url, '/api/data/earnings_snapshot');
+});
+
+test('selectRows: propagates HTTP 500', async () => {
+  nextStatus = 500;
+  await assert.rejects(
+    () => selectRows('earnings_snapshot', { ticker: 'NVDA' }, cfg()),
     /HTTP 500/,
   );
 });
