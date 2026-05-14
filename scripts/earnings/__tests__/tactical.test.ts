@@ -134,3 +134,60 @@ test('runTactical: email failure → sent:false, audit_log still written with ok
     }
   }
 });
+
+// WHY: Loop 8 follow-up to T10 — the original email-failure test exercises
+// the bug-fix path only when zero findings exist (Finnhub returns {}).
+// This test forces Finnhub to surface real events so insertRows('findings', …)
+// MUST fire; combined with a Resend 503, we verify both writes happen even
+// though email send failed BEFORE the findings/audit inserts.
+test('runTactical: email failure + non-empty findings → findings POST still fires + audit ok:false', async () => {
+  const env = fullEnv();
+  const saved: Record<string, string | undefined> = {};
+  for (const k of ENV_VARS) { saved[k] = process.env[k]; process.env[k] = env[k]; }
+  rlTest.impl = () => Promise.resolve();
+  const originalFetch = globalThis.fetch;
+  const calls: { url: string; body: unknown }[] = [];
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    let body: unknown = null;
+    try { body = init?.body ? JSON.parse(String(init.body)) : null; } catch { /* not JSON */ }
+    calls.push({ url, body });
+    if (url.startsWith('https://api.resend.com')) {
+      return new Response(JSON.stringify({ message: 'service unavailable' }), { status: 503 });
+    }
+    if (url.includes('butterbase.dev')) {
+      return new Response(JSON.stringify({ id: 'row_test', ...((body as object) ?? {}) }), { status: 200 });
+    }
+    // Finnhub earnings calendar: return ONE real event so dedupSchedule + buildFindings produce ≥1 row.
+    if (url.startsWith('https://finnhub.io/api/v1/calendar/earnings')) {
+      return new Response(JSON.stringify({
+        earningsCalendar: [{ symbol: 'NVDA', date: '2026-05-20', hour: 'amc',
+          epsEstimate: 5.0, revenueEstimate: 40_000_000_000 }],
+      }), { status: 200 });
+    }
+    // All other source fan-out: empty.
+    return new Response('{}', { status: 200 });
+  }) as typeof fetch;
+  try {
+    const result = await runTactical();
+    assert.equal(result.sent, false, 'sent must be false when Resend fails');
+    assert.ok(result.findings >= 1, `expected ≥1 finding, got ${result.findings}`);
+    const findingsCall = calls.find((c) => c.url.includes('/api/data/findings'));
+    assert.ok(findingsCall, 'findings POST MUST fire even when Resend failed');
+    const findingsRows = (findingsCall.body as { rows?: unknown[] }).rows ?? findingsCall.body;
+    assert.ok(Array.isArray(findingsRows) && findingsRows.length >= 1,
+      'findings POST body must carry ≥1 row');
+    const auditCall = calls.find((c) => c.url.includes('/api/data/audit_log'));
+    assert.ok(auditCall, 'audit_log POST MUST fire even when Resend failed');
+    const row = auditCall.body as { ok: boolean; note: string; findings_count: number };
+    assert.equal(row.ok, false, 'audit row ok must be false on email failure');
+    assert.ok(row.findings_count >= 1, 'audit row findings_count must reflect persisted rows');
+    assert.match(row.note, /email failed/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    _resetRateLimiter();
+    for (const k of ENV_VARS) {
+      if (saved[k] !== undefined) process.env[k] = saved[k]; else delete process.env[k];
+    }
+  }
+});
